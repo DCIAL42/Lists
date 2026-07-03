@@ -3,9 +3,13 @@ package search
 import (
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
+	"sync"
 
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
 )
 
 func NewSearchService(clients ...*client.Client) SearchService {
@@ -16,8 +20,6 @@ func (s *SearchService) Search(c *gin.Context) {
 	results := make([]client.SearchResult, 0)
 
 	var queryParams QueryParams
-	test := c.DefaultQuery("query", "empty")
-	fmt.Println(test)
 
 	err := c.BindQuery(&queryParams)
 
@@ -26,17 +28,33 @@ func (s *SearchService) Search(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("%+v\n", queryParams)
+	resultTypes := strings.Split(queryParams.Types, "|")
+
+	var mu sync.Mutex
+	g, ctx := errgroup.WithContext(c.Request.Context())
 
 	for _, client := range s.clients {
-		r, err := client.Search(c.Request.Context(), queryParams.Query)
-
-		if err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"error": "upstream server error"})
-			return
+		if !slices.Contains(resultTypes, client.GetType()) {
+			continue
 		}
 
-		results = append(results, r...)
+		g.Go(func() error {
+			r, err := client.Search(ctx, map[string]string{"query": queryParams.Query})
+
+			if err != nil {
+				return err
+			}
+
+			mu.Lock()
+			results = append(results, r...)
+			mu.Unlock()
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		fmt.Println(err)
 	}
 
 	c.IndentedJSON(http.StatusOK, results)

@@ -1,0 +1,45 @@
+<script lang="ts">
+    import type { SvelteHTMLElements } from "svelte/elements";
+    import Field from "./Field.svelte";
+
+    type Props = Omit<SvelteHTMLElements["input"], "placeholder"> & {
+        label?: string;
+        value?: any;
+        variant?: "text" | "search";
+    };
+
+    let {
+        label = "Label",
+        value = $bindable(),
+        variant = "text",
+        ...props
+    }: Props = $props();
+
+    let focused = $state(false);
+    let filled = $derived(value);
+</script>
+
+<Field {label} {focused} {filled}>
+    <input
+        placeholder=""
+        bind:value
+        {...props}
+        onfocus={() => (focused = true)}
+        onblur={() => (focused = false)}
+    />
+</Field>
+
+<style>
+    input {
+        background-color: var(--background);
+        width: 100%;
+        border: 0;
+        padding: 16.5px 14px;
+        height: 1.5em;
+        font-size: inherit;
+    }
+
+    input:focus {
+        outline: none;
+    }
+</style>

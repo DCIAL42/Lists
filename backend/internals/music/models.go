@@ -11,8 +11,9 @@ type Response struct {
 }
 
 type Album struct {
-	Id     string `json:"id"`
-	Title  string `json:"title"`
-	Artist string `json:"artist"`
-	Cover  string `json:"cover"`
+	Id          string `json:"id"`
+	Title       string `json:"title"`
+	Artist      string `json:"artist"`
+	Cover       string `json:"cover"`
+	ListenCount int
 }

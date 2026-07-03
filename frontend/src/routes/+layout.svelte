@@ -1,5 +1,7 @@
 <script lang="ts">
     import favicon from "$lib/assets/favicon.svg";
+    import Link from "$lib/Link.svelte";
+    import "../app.css";
 
     let { children } = $props();
 </script>
@@ -9,45 +11,14 @@
 </svelte:head>
 
 <nav>
-    <a href="/" class="page-title">Home</a>
+    <Link href="/" class="page-title">Home</Link>
     <div class="page-links">
-        <a href="/music">Music</a>
-        <a href="/movies">Movies</a>
+        <Link href="/music">Music</Link>
+        <Link href="/movies">Movies</Link>
     </div>
     <div>
-        <a href="/profile">Profile</a>
+        <Link href="/profile">Profile</Link>
     </div>
 </nav>
 
 {@render children()}
-
-<style>
-    nav {
-        border-bottom: 1px solid grey;
-        margin-bottom: 5px;
-        padding: 10px;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .page-title {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .page-links {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .page-links a {
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .page-links a:hover {
-        text-decoration: underline solid white 2px;
-        text-underline-offset: 6px;
-    }
-</style>

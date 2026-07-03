@@ -3,15 +3,16 @@ package client
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 )
 
-func NewClient(httpClient *http.Client, baseURL, queryParamName string, configParams, headers map[string]string, readToSearchResults func(*http.Response) ([]SearchResult, error)) *Client {
+func NewClient(httpClient *http.Client, baseURL, resultType string, configParams, headers map[string]string, readToSearchResults func(*http.Response) ([]SearchResult, error)) *Client {
 	return &Client{
 		httpClient,
 		baseURL,
-		queryParamName,
+		resultType,
 		configParams,
 		headers,
 		readToSearchResults,
@@ -28,10 +29,15 @@ func buildUrl(params map[string]string) string {
 	return query.Encode()
 }
 
-func (c *Client) Search(ctx context.Context, query string) ([]SearchResult, error) {
-	c.configParams[c.queryParamName] = query
+func (c *Client) GetType() string {
+	return c.resultType
+}
 
-	q := buildUrl(c.configParams)
+func (c *Client) Search(ctx context.Context, params map[string]string) ([]SearchResult, error) {
+	maps.Copy(params, c.configParams)
+
+	q := buildUrl(params)
+
 	fmt.Println(q)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", c.baseURL+"?"+q, nil)

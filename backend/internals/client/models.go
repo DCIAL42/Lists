@@ -7,7 +7,7 @@ import (
 type Client struct {
 	httpClient         *http.Client
 	baseURL            string
-	queryParamName     string
+	resultType         string
 	configParams       map[string]string
 	headers            map[string]string
 	readToSearchResult func(*http.Response) ([]SearchResult, error)

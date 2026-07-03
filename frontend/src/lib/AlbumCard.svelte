@@ -18,7 +18,7 @@
         flex-direction: column;
         align-items: center;
         width: 300px;
-        border: 1px, solid, gray;
+        border: 1px, solid, var(--border);
         text-align: center;
         padding: 10px;
         border-radius: 10px;
@@ -35,6 +35,6 @@
     }
 
     .album-subtitle {
-        color: lightgray;
+        color: var(--text-light);
     }
 </style>

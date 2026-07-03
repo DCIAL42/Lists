@@ -8,4 +8,5 @@ type SearchService struct {
 
 type QueryParams struct {
 	Query string `form:"query"`
+	Types string `form:"type"`
 }
