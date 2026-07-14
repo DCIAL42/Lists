@@ -1,128 +1,124 @@
 package music
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"sort"
-	"time"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/DCIAL42/media/internals/client"
 )
 
-type PopPayload struct {
-	Mbids []string `json:"release_group_mbids"`
+type TokenResponse struct {
+	Token string `json:"access_token"`
+	Type  string `json:"token_type"`
 }
 
-type PopResponse struct {
-	Id          string `json:"release_group_mbid"`
-	ListenCount int    `json:"total_listen_count"`
-	UserCount   int    `json:"total_user_count"`
-}
-
-func fetchPops(albums []Album, ctx context.Context) ([]PopResponse, error) {
-	c := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	ids := make([]string, 0, len(albums))
-
-	for _, a := range albums {
-		ids = append(ids, a.Id)
-	}
-
-	idData := PopPayload{Mbids: ids}
-	jsonData, err := json.Marshal(idData)
-	if err != nil {
-		return []PopResponse{}, err
-	}
-	body := bytes.NewBuffer(jsonData)
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.listenbrainz.org/1/popularity/release-group", body)
-
-	if err != nil {
-		return []PopResponse{}, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Token %s", "a344070c-0efb-47df-8b0a-52347fc19fae"))
-
-	resp, err := c.Do(req)
-
-	if err != nil {
-		return []PopResponse{}, err
-	}
-
-	defer resp.Body.Close()
-
-	var pops []PopResponse
-
-	err = json.NewDecoder(resp.Body).Decode(&pops)
-
-	return pops, nil
-}
-
-func readToSearchResult(resp *http.Response) ([]client.SearchResult, error) {
+func readToSearchResult(resp *http.Response) (client.SearchResult, error) {
 	var data Response
 
 	err := json.NewDecoder(resp.Body).Decode(&data)
 
 	if err != nil {
-		return []client.SearchResult{}, err
+		return client.SearchResult{}, err
 	}
 
-	albums := make([]Album, 0, len(data.Results))
+	albums := make([]any, 0, len(data.Albums.Items))
 
-	for _, r := range data.Results {
+	for _, r := range data.Albums.Items {
 		var artist string
-		if len(r.Credits) > 0 {
-			artist = r.Credits[0].Name
+		if len(r.Artists) > 0 {
+			artist = r.Artists[0].Name
 		}
 
-		coverURL := fmt.Sprintf("https://coverartarchive.org/release-group/%s/front", r.Id)
+		var cover string
+		if len(r.Images) > 0 {
+			cover = r.Images[0].URL
+		}
 
 		albums = append(albums, Album{
 			Id:     r.Id,
 			Title:  r.Title,
 			Artist: artist,
-			Cover:  coverURL,
+			Cover:  cover,
 		})
 	}
 
-	pops, err := fetchPops(albums, resp.Request.Context())
+	return client.SearchResult{Items: albums}, nil
+}
 
+func buildURL(baseURL string, params map[string]string) string {
+	query := url.Values{}
+
+	params["q"] = params["query"]
+	delete(params, "query")
+
+	page, err := strconv.Atoi(params["page"])
 	if err != nil {
-		return []client.SearchResult{}, err
+		page = 0
+	}
+	params["offset"] = strconv.Itoa(page * 10)
+
+	for k, v := range params {
+		query.Set(k, v)
 	}
 
-	for i := range albums {
-		albums[i].ListenCount = pops[i].ListenCount
+	url := baseURL + "?" + query.Encode()
+	return url
+}
+
+func fetchToken(ctx context.Context, c *client.Client) {
+	id := os.Getenv("SPOTIFY_CLIENT_ID")
+	secret := os.Getenv("SPOTIFY_CLIENT_SECRET")
+
+	values := url.Values{}
+	values.Set("grant_type", "client_credentials")
+	values.Set("client_id", id)
+	values.Set("client_secret", secret)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://accounts.spotify.com/api/token", strings.NewReader(values.Encode()))
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.GetClient().Do(req)
+
+	if err != nil || resp.StatusCode != 200 {
+		slog.Error(err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	var tokenData TokenResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&tokenData)
+	if err != nil {
+		slog.Error(err.Error())
+		return
 	}
 
-	sort.Slice(albums, func(i, j int) bool {
-		return albums[i].ListenCount > albums[j].ListenCount
-	})
-
-	results := make([]client.SearchResult, 0)
-
-	for _, a := range albums {
-		results = append(results, a)
-	}
-
-	return results, nil
+	c.SetHeader("Authorization", fmt.Sprintf("%s %s", tokenData.Type, tokenData.Token))
 }
 
 func NewMusicClient(httpClient *http.Client) *client.Client {
 	return client.NewClient(
 		httpClient,
-		"https://musicbrainz.org/ws/2/release-group",
+		"https://api.spotify.com/v1/search",
 		"album",
 		map[string]string{
-			"fmt": "json",
+			"type":  "album",
+			"limit": "10",
 		},
-		map[string]string{
-			"User-Agent": "test/1.0 ( dial1764@proton.me )",
-		},
+		map[string]string{},
 		readToSearchResult,
+		buildURL,
+		fetchToken,
 	)
 }

@@ -1,19 +1,25 @@
 package music
 
 type Response struct {
-	Results []struct {
-		Id      string `json:"id"`
-		Title   string `json:"title"`
-		Credits []struct {
-			Name string `json:"name"`
-		} `json:"artist-credit"`
-	} `json:"release-groups"`
+	Albums struct {
+		Items []struct {
+			Id      string `json:"id"`
+			Title   string `json:"name"`
+			Artists []struct {
+				Name string `json:"name"`
+			} `json:"artists"`
+			Images []struct {
+				URL string `json:"url"`
+			} `json:"images"`
+		} `json:"items"`
+		Next string `json:"next"`
+	} `json:"albums"`
 }
 
 type Album struct {
-	Id          string `json:"id"`
-	Title       string `json:"title"`
-	Artist      string `json:"artist"`
-	Cover       string `json:"cover"`
-	ListenCount int
+	Id     string `json:"id"`
+	Title  string `json:"title"`
+	Artist string `json:"artist"`
+	Cover  string `json:"cover"`
+	Next   string `json:"next"`
 }

@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"slices"
@@ -32,6 +33,8 @@ func (s *SearchService) Search(c *gin.Context) {
 
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
+	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
+	fmt.Println(c.Request.RequestURI)
 
 	for _, client := range s.clients {
 		if !slices.Contains(resultTypes, client.GetType()) {
@@ -39,14 +42,14 @@ func (s *SearchService) Search(c *gin.Context) {
 		}
 
 		g.Go(func() error {
-			r, err := client.Search(ctx, map[string]string{"query": queryParams.Query})
+			r, err := client.Search(ctx, map[string]string{"query": queryParams.Query, "page": queryParams.Page})
 
 			if err != nil {
 				return err
 			}
 
 			mu.Lock()
-			results = append(results, r...)
+			results = append(results, r)
 			mu.Unlock()
 
 			return nil
@@ -57,5 +60,9 @@ func (s *SearchService) Search(c *gin.Context) {
 		fmt.Println(err)
 	}
 
-	c.IndentedJSON(http.StatusOK, results)
+	if len(results) == 1 {
+		c.IndentedJSON(http.StatusOK, results[0])
+	} else {
+		c.IndentedJSON(http.StatusOK, results)
+	}
 }
