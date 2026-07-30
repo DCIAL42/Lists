@@ -4,12 +4,14 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/internals/movies"
 	"github.com/DCIAL42/media/internals/music"
 	"github.com/DCIAL42/media/internals/search"
+	"github.com/DCIAL42/media/lists"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/location/v2"
 	"github.com/gin-gonic/gin"
@@ -18,17 +20,23 @@ import (
 
 func main() {
 	godotenv.Load()
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
+	debug, ok := os.LookupEnv("DEBUG")
+	if ok && strings.ToUpper(debug) == "TRUE" {
+		slog.Info("Entering debug mode")
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	clients := []*client.Client{music.NewMusicClient(httpClient), movies.NewMovieClient(httpClient)}
+	musicClient := music.NewMusicClient(httpClient)
+	clients := []client.Client{musicClient, movies.NewMovieClient(httpClient)}
 
 	s := search.NewSearchService(clients...)
 
 	r := gin.Default()
+
+	api := r.Group("/api")
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
@@ -41,6 +49,12 @@ func main() {
 	r.Use(location.Default())
 
 	r.GET("/search", s.Search)
+
+	listGroup := api.Group("/list")
+
+	listService := lists.NewService(musicClient)
+
+	listService.SetupRoutes(listGroup)
 
 	r.Run(":8080")
 }
