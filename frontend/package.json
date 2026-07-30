@@ -21,6 +21,8 @@
 		"vite": "^8.0.16"
 	},
 	"dependencies": {
+		"@rodrigodagostino/svelte-sortable-list": "^2.2.4",
+		"svelte-loading-skeleton": "^1.0.1",
 		"uuid": "^14.0.1"
 	}
 }

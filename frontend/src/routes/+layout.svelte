@@ -1,6 +1,6 @@
 <script lang="ts">
     import favicon from "$lib/assets/favicon.svg";
-    import Link from "$lib/Link.svelte";
+    import Link from "$lib/components/Link.svelte";
     import "../app.css";
 
     let { children } = $props();

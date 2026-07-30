@@ -4,6 +4,7 @@ import type { RequestHandler } from "./$types";
 export const GET: RequestHandler = async ({ url }) => {
     const query = url.searchParams.get("query")
     const type = url.searchParams.get("type")
+    const page = url.searchParams.get("page")
 
     if (!query || !type) {
         return json(
@@ -12,7 +13,12 @@ export const GET: RequestHandler = async ({ url }) => {
         )
     }
 
-    const res = await fetch(`http://localhost:8080/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`)
+    let u = `http://localhost:8080/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`
+    if (page !== null) {
+        u += `&page=${page}`
+    }
+
+    const res = await fetch(u)
     const data = await res.json()
 
     return json(data)
