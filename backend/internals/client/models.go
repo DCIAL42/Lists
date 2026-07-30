@@ -5,15 +5,12 @@ import (
 	"net/http"
 )
 
-type Client struct {
-	httpClient         *http.Client
-	baseURL            string
-	resultType         string
-	configParams       map[string]string
-	headers            map[string]string
-	readToSearchResult func(*http.Response) (SearchResult, error)
-	buildURL           func(string, map[string]string) string
-	fetchToken         func(context.Context, *Client)
+type Client interface {
+	BuildURL(map[string]string) string
+	TryRequest(context.Context, string) (*http.Response, error)
+	ReadToSearchResult(*http.Response) (SearchResult, error)
+	Search(context.Context, map[string]string) (SearchResult, error)
+	GetResultType() string
 }
 
 type SearchResult struct {

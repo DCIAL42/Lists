@@ -3,8 +3,10 @@ package music
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,14 +21,21 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func readToSearchResult(resp *http.Response) (client.SearchResult, error) {
+func (c *Client) GetResultType() string {
+	return c.resultType
+}
+
+func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, error) {
 	var data Response
 
 	err := json.NewDecoder(resp.Body).Decode(&data)
 
 	if err != nil {
+		slog.Error(err.Error())
 		return client.SearchResult{}, err
 	}
+
+	defer resp.Body.Close()
 
 	albums := make([]any, 0, len(data.Albums.Items))
 
@@ -42,17 +51,18 @@ func readToSearchResult(resp *http.Response) (client.SearchResult, error) {
 		}
 
 		albums = append(albums, Album{
-			Id:     r.Id,
-			Title:  r.Title,
-			Artist: artist,
-			Cover:  cover,
+			ExternalID: r.ExternalID,
+			Title:      r.Title,
+			Artist:     artist,
+			Cover:      cover,
+			Type:       c.resultType,
 		})
 	}
 
 	return client.SearchResult{Items: albums}, nil
 }
 
-func buildURL(baseURL string, params map[string]string) string {
+func (c *Client) BuildURL(params map[string]string) string {
 	query := url.Values{}
 
 	params["q"] = params["query"]
@@ -68,11 +78,11 @@ func buildURL(baseURL string, params map[string]string) string {
 		query.Set(k, v)
 	}
 
-	url := baseURL + "?" + query.Encode()
-	return url
+	return c.baseURL + c.searchPath + "?" + query.Encode()
 }
 
-func fetchToken(ctx context.Context, c *client.Client) {
+func (c *Client) fetchToken(ctx context.Context) {
+	slog.Debug("Fetching api token.", "API", c.baseURL)
 	id := os.Getenv("SPOTIFY_CLIENT_ID")
 	secret := os.Getenv("SPOTIFY_CLIENT_SECRET")
 
@@ -88,7 +98,7 @@ func fetchToken(ctx context.Context, c *client.Client) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := c.GetClient().Do(req)
+	resp, err := c.httpClient.Do(req)
 
 	if err != nil || resp.StatusCode != 200 {
 		slog.Error(err.Error())
@@ -104,21 +114,122 @@ func fetchToken(ctx context.Context, c *client.Client) {
 		return
 	}
 
-	c.SetHeader("Authorization", fmt.Sprintf("%s %s", tokenData.Type, tokenData.Token))
+	c.headers["Authorization"] = fmt.Sprintf("%s %s", tokenData.Type, tokenData.Token)
 }
 
-func NewMusicClient(httpClient *http.Client) *client.Client {
-	return client.NewClient(
+func NewMusicClient(httpClient *http.Client) *Client {
+	c := &Client{
 		httpClient,
-		"https://api.spotify.com/v1/search",
+		"https://api.spotify.com/v1",
+		"/search",
 		"album",
 		map[string]string{
 			"type":  "album",
 			"limit": "10",
 		},
 		map[string]string{},
-		readToSearchResult,
-		buildURL,
-		fetchToken,
-	)
+	}
+	c.fetchToken(context.Background())
+	return c
+}
+
+// func (c *Client) buildRequest(targetUrl string, method string, body io.Reader, ctxs ...context.Context) (*http.Request, error) {
+// 	var ctx context.Context
+//
+// 	if len(ctxs) == 1 {
+// 		ctx = ctxs[1]
+// 	} else {
+// 		ctx = context.Background()
+// 	}
+//
+// 	req, err := http.NewRequestWithContext(ctx, method, targetUrl, body)
+//
+// 	if err != nil {
+// 		slog.Error(err.Error())
+// 		return nil, err
+// 	}
+//
+// 	for k, v := range c.headers {
+// 		req.Header.Set(k, v)
+// 	}
+//
+// 	return req, nil
+// }
+
+func (c *Client) TryRequest(ctx context.Context, targetUrl string) (*http.Response, error) {
+	for range 3 {
+		req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
+
+		if err != nil {
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		for k, v := range c.headers {
+			req.Header.Set(k, v)
+		}
+
+		resp, err := c.httpClient.Do(req)
+
+		if err != nil {
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		if resp.StatusCode == 401 {
+			slog.Info("Response status not ok, refreshing token.", "StatusCode", resp.StatusCode, "API", c.baseURL)
+			c.fetchToken(ctx)
+			continue
+		}
+
+		return resp, nil
+	}
+	return nil, errors.New("Unable to make request")
+}
+
+func (c *Client) Search(ctx context.Context, params map[string]string) (client.SearchResult, error) {
+	maps.Copy(params, c.configParams)
+
+	return client.Search(ctx, c, params)
+}
+
+func (c *Client) GetAlbum(ID string) (Album, error) {
+	targetUrl := c.baseURL + "/albums/" + ID
+
+	resp, err := c.TryRequest(context.Background(), targetUrl)
+
+	if err != nil {
+		return Album{}, err
+	}
+
+	var res AlbumResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return Album{}, err
+	}
+
+	defer resp.Body.Close()
+
+	var artist string
+	if len(res.Artists) > 0 {
+		artist = res.Artists[0].Name
+	}
+
+	var cover string
+	if len(res.Images) > 0 {
+		cover = res.Images[0].URL
+	}
+
+	album := Album{
+		ExternalID: res.ExternalID,
+		Title:      res.Title,
+		Artist:     artist,
+		Cover:      cover,
+		Type:       "album",
+	}
+
+	return album, nil
 }

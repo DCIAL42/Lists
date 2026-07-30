@@ -2,7 +2,7 @@ package search
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func NewSearchService(clients ...*client.Client) SearchService {
+func NewSearchService(clients ...client.Client) SearchService {
 	return SearchService{clients}
 }
 
@@ -25,6 +25,7 @@ func (s *SearchService) Search(c *gin.Context) {
 	err := c.BindQuery(&queryParams)
 
 	if err != nil {
+		slog.Error(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad query"})
 		return
 	}
@@ -34,10 +35,9 @@ func (s *SearchService) Search(c *gin.Context) {
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
 	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
-	fmt.Println(c.Request.RequestURI)
 
 	for _, client := range s.clients {
-		if !slices.Contains(resultTypes, client.GetType()) {
+		if !slices.Contains(resultTypes, client.GetResultType()) {
 			continue
 		}
 
@@ -45,6 +45,7 @@ func (s *SearchService) Search(c *gin.Context) {
 			r, err := client.Search(ctx, map[string]string{"query": queryParams.Query, "page": queryParams.Page})
 
 			if err != nil {
+				slog.Error(err.Error())
 				return err
 			}
 
@@ -57,7 +58,7 @@ func (s *SearchService) Search(c *gin.Context) {
 	}
 
 	if err := g.Wait(); err != nil {
-		fmt.Println(err)
+		slog.Error(err.Error())
 	}
 
 	if len(results) == 1 {
