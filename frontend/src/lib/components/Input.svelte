@@ -6,16 +6,17 @@
         label?: string;
         value?: any;
         variant?: "text" | "search";
+        focused?: boolean;
     };
 
     let {
         label = "Label",
         value = $bindable(),
         variant = "text",
+        focused = $bindable<boolean>(),
         ...props
     }: Props = $props();
 
-    let focused = $state(false);
     let filled = $derived(value);
 </script>
 
@@ -23,9 +24,9 @@
     <input
         placeholder=""
         bind:value
-        {...props}
         onfocus={() => (focused = true)}
         onblur={() => (focused = false)}
+        {...props}
     />
 </Field>
 

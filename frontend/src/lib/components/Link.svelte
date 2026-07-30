@@ -11,7 +11,7 @@
     }
 
     a:hover {
-        text-decoration: underline solid var(--color) 2px;
+        text-decoration: underline solid var(--primary) 2px;
         text-underline-offset: 6px;
     }
 </style>

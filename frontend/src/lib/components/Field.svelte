@@ -73,6 +73,7 @@
         transform: translate(14px, 16px);
         transition: transform 0.2s ease;
         color: var(--text-light);
+        pointer-events: none;
     }
 
     .outer.focused legend,
