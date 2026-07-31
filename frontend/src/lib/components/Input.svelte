@@ -4,7 +4,7 @@
 
     type Props = Omit<SvelteHTMLElements["input"], "placeholder"> & {
         label?: string;
-        value?: any;
+        value?: string;
         variant?: "text" | "search";
         focused?: boolean;
     };

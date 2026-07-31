@@ -1,11 +1,12 @@
 <script lang="ts">
-    import Card from "./Card.svelte";
+    import type { Album } from "$lib/types";
+    import Card from "$lib/components/Card.svelte";
 
     const {
         album,
         add = false,
         onclick,
-    }: { album: any; add?: boolean; onclick?: () => void } = $props();
+    }: { album: Album; add?: boolean; onclick?: () => void } = $props();
 </script>
 
 <Card

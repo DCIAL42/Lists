@@ -30,14 +30,14 @@ func (s *SearchService) Search(c *gin.Context) {
 		return
 	}
 
-	resultTypes := strings.Split(queryParams.Types, "|")
+	resultTypes := strings.Split(string(queryParams.Types), "|")
 
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
 	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
 
 	for _, client := range s.clients {
-		if !slices.Contains(resultTypes, client.GetResultType()) {
+		if !slices.Contains(resultTypes, string(client.GetMediaType())) {
 			continue
 		}
 

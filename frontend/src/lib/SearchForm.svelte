@@ -4,14 +4,15 @@
     import Link from "$lib/components/Link.svelte";
     import MovieCard from "$lib/components/MovieCard.svelte";
     import SearchResults from "$lib/SearchResults.svelte";
-    import { title } from "$lib/utils";
+    import { isAlbum, isMovie, title } from "$lib/utils";
+    import type { MediaItem } from "$lib/types";
 
     type SearchResponse = {
         next: string;
-        items: any[];
+        items: MediaItem[];
     };
 
-    let { items = $bindable() }: { items: any[] } = $props();
+    let { items = $bindable() }: { items: MediaItem[] } = $props();
 
     const resultTypes = ["album", "movie"];
     let resultType = $state("");
@@ -79,7 +80,7 @@
         {#await results}
             <p>Loading...</p>
         {:then data}
-            {#if data !== null && data.items.length > 0 && focused}
+            {#if data !== null && data.items?.length > 0 && focused}
                 <SearchResults
                     onmousedown={(e) => e.preventDefault()}
                     style="z-index: 10000;"
@@ -92,16 +93,16 @@
                             Next
                         </Link>
                     {/if}
-                    {#each data?.items as item}
-                        {#if resultType === "album"}
+                    {#each data.items as item}
+                        {#if isAlbum(item)}
                             <AlbumCard
-                                album={item}
+                                album={item.data}
                                 add
                                 onclick={() => items.push(item)}
                             />
-                        {:else if resultType === "movie"}
+                        {:else if isMovie(item)}
                             <MovieCard
-                                movie={item}
+                                movie={item.data}
                                 add
                                 onclick={() => {
                                     items.push(item);

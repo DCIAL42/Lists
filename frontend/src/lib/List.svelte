@@ -1,16 +1,22 @@
 <script lang="ts">
-    import ListItem from "$lib/ListItem.svelte";
+    import ListItemCard from "$lib/ListItemCard.svelte";
     import {
         SortableList,
         sortItems,
     } from "@rodrigodagostino/svelte-sortable-list";
+    import type { MediaItem } from "$lib/types";
 
     let {
         items = $bindable(),
+        editing = false,
         loading = false,
-    }: { items: any[]; loading?: boolean } = $props();
+    }: {
+        items: MediaItem[];
+        editing?: boolean;
+        loading?: boolean;
+    } = $props();
 
-    function tag_items(items: any[]) {
+    function tag_items(items: MediaItem[]) {
         return items.map((item, i) => ({ id: String(i), ...item }));
     }
 
@@ -36,18 +42,19 @@
         <div class="empty-list">
             <p>Search for something to add to the list</p>
         </div>
-    {:else}
+    {:else if editing}
         <SortableList.Root
             ondragend={handleDragEnd}
             ondrag={(e) => (dragIdx = e.draggedItemIndex)}
             ondrop={() => (dragIdx = null)}
             isLocked={loading}
         >
-            {#each tag_items(items) as item, index (item.id)}
+            {#each tag_items(items) as item, index (index)}
                 <SortableList.Item {...item} {index}>
-                    <ListItem
+                    <ListItemCard
                         {item}
                         {index}
+                        {editing}
                         dragging={dragIdx === index}
                         bind:loading
                         {onRemoveClick}
@@ -55,6 +62,17 @@
                 </SortableList.Item>
             {/each}
         </SortableList.Root>
+    {:else}
+        {#each tag_items(items) as item, index (index)}
+            <ListItemCard
+                item={item.data}
+                {index}
+                {editing}
+                dragging={dragIdx === index}
+                bind:loading
+                {onRemoveClick}
+            />
+        {/each}
     {/if}
 </div>
 

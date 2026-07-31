@@ -8,7 +8,7 @@
         value = $bindable(),
         ...props
     }: SvelteHTMLElements["select"] & {
-        options: any[];
+        options: string[];
         label: string;
     } = $props();
 

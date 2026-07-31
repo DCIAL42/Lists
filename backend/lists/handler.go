@@ -1,7 +1,6 @@
 package lists
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -23,10 +22,11 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		list, err := s.getListById(id)
 
-		fmt.Println(list, err)
-
 		if err != nil {
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err})
+			// var httpErr *HttpError
+			// if errors.As(err, &httpErr) {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			// }
 			return
 		}
 
@@ -34,10 +34,27 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	})
 
 	r.GET("/", func(c *gin.Context) {
-		lists, err := s.getAllLists()
+		pageStr, ok := c.GetQuery("page")
+
+		var page uint
+
+		if ok {
+			val, err := strconv.ParseUint(pageStr, 10, 64)
+
+			if err != nil {
+				c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid page"})
+				return
+			}
+
+			page = uint(val)
+		} else {
+			page = 1
+		}
+
+		lists, err := s.getAllLists(uint(page))
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 
 		c.IndentedJSON(http.StatusOK, lists)

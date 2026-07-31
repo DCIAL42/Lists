@@ -4,17 +4,21 @@
     import Skeleton from "$lib/components/Skeleton.svelte";
     import Button from "$lib/components/Button.svelte";
     import Cross from "$lib/icons/Cross.svelte";
+    import type { MediaItem } from "$lib/types";
+    import { isAlbum } from "./utils";
 
     let {
         item,
         index,
         dragging,
+        editing = false,
         loading = $bindable(false),
         onRemoveClick,
     }: {
-        item: any;
+        item: MediaItem;
         index: number;
         dragging: boolean;
+        editing?: boolean;
         loading?: boolean;
         onRemoveClick: (e: MouseEvent, i: number) => void;
     } = $props();
@@ -22,39 +26,46 @@
 
 {#if loading}
     <div class="list-item">
-        <div class="grip" style="margin-inline: 6px;">
-            <Skeleton height={24} width={12} />
-        </div>
+        {#if editing}
+            <div class="grip" style="margin-inline: 6px;">
+                <Skeleton height={24} width={12} />
+            </div>
+        {/if}
         <Skeleton size={250} />
         <div class="list-text">
             <Skeleton width={200} height={48} />
             <Skeleton width={150} height={24} />
         </div>
-        <Skeleton size={42} />
     </div>
 {:else}
     <div class="list-item" class:dragging>
-        <div class="grip">
-            <SortableList.ItemHandle>
-                <Grip />
-            </SortableList.ItemHandle>
-        </div>
+        {#if editing}
+            <div class="grip">
+                <SortableList.ItemHandle>
+                    <Grip />
+                </SortableList.ItemHandle>
+            </div>
+        {/if}
         <img
-            src={item.cover || item.poster || "https://placehold.co/250"}
+            src={item.data.cover || "https://placehold.co/250"}
             alt={"cover"}
             class="item-cover"
         />
         <div class="list-text">
-            <h1 class="title">{index + 1}. {item.title}</h1>
-            <p class="subtitle">{item.artist}</p>
+            <h1 class="title">{index + 1}. {item.data.title}</h1>
+            {#if isAlbum(item)}
+                <p class="subtitle">{item.data.artist}</p>
+            {/if}
         </div>
-        <Button
-            variant="ghost"
-            style="color:red;"
-            onclick={(e) => onRemoveClick(e, index)}
-        >
-            <Cross />
-        </Button>
+        {#if editing}
+            <Button
+                variant="ghost"
+                style="color:red;"
+                onclick={(e) => onRemoveClick(e, index)}
+            >
+                <Cross />
+            </Button>
+        {/if}
     </div>
 {/if}
 

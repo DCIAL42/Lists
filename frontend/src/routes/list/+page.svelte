@@ -4,7 +4,6 @@
 
     let { data } = $props();
     let lists = $derived(data.lists);
-    $inspect(lists);
 </script>
 
 <Link href="/list/create">Create new list</Link>

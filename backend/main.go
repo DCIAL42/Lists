@@ -30,7 +30,8 @@ func main() {
 	}
 
 	musicClient := music.NewMusicClient(httpClient)
-	clients := []client.Client{musicClient, movies.NewMovieClient(httpClient)}
+	movieClient := movies.NewMovieClient(httpClient)
+	clients := []client.Client{musicClient, movieClient}
 
 	s := search.NewSearchService(clients...)
 
@@ -52,7 +53,7 @@ func main() {
 
 	listGroup := api.Group("/list")
 
-	listService := lists.NewService(musicClient)
+	listService := lists.NewService(musicClient, movieClient)
 
 	listService.SetupRoutes(listGroup)
 

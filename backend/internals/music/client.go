@@ -21,8 +21,8 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (c *Client) GetResultType() string {
-	return c.resultType
+func (c *Client) GetMediaType() client.MediaType {
+	return c.mediaType
 }
 
 func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, error) {
@@ -37,7 +37,7 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 
 	defer resp.Body.Close()
 
-	albums := make([]any, 0, len(data.Albums.Items))
+	albums := make([]client.MediaItem, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
 		var artist string
@@ -50,12 +50,14 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 			cover = r.Images[0].URL
 		}
 
-		albums = append(albums, Album{
+		albums = append(albums, client.MediaItem{
+			Type:       c.mediaType,
 			ExternalID: r.ExternalID,
-			Title:      r.Title,
-			Artist:     artist,
-			Cover:      cover,
-			Type:       c.resultType,
+			Data: Album{
+				Title:  r.Title,
+				Artist: artist,
+				Cover:  cover,
+			},
 		})
 	}
 
@@ -133,29 +135,6 @@ func NewMusicClient(httpClient *http.Client) *Client {
 	return c
 }
 
-// func (c *Client) buildRequest(targetUrl string, method string, body io.Reader, ctxs ...context.Context) (*http.Request, error) {
-// 	var ctx context.Context
-//
-// 	if len(ctxs) == 1 {
-// 		ctx = ctxs[1]
-// 	} else {
-// 		ctx = context.Background()
-// 	}
-//
-// 	req, err := http.NewRequestWithContext(ctx, method, targetUrl, body)
-//
-// 	if err != nil {
-// 		slog.Error(err.Error())
-// 		return nil, err
-// 	}
-//
-// 	for k, v := range c.headers {
-// 		req.Header.Set(k, v)
-// 	}
-//
-// 	return req, nil
-// }
-
 func (c *Client) TryRequest(ctx context.Context, targetUrl string) (*http.Response, error) {
 	for range 3 {
 		req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
@@ -193,13 +172,13 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (client.S
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetAlbum(ID string) (Album, error) {
+func (c *Client) GetItem(ID string) (client.MediaItem, error) {
 	targetUrl := c.baseURL + "/albums/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)
 
 	if err != nil {
-		return Album{}, err
+		return client.MediaItem{}, err
 	}
 
 	var res AlbumResponse
@@ -208,7 +187,7 @@ func (c *Client) GetAlbum(ID string) (Album, error) {
 
 	if err != nil {
 		slog.Error(err.Error())
-		return Album{}, err
+		return client.MediaItem{}, err
 	}
 
 	defer resp.Body.Close()
@@ -224,12 +203,14 @@ func (c *Client) GetAlbum(ID string) (Album, error) {
 	}
 
 	album := Album{
-		ExternalID: res.ExternalID,
-		Title:      res.Title,
-		Artist:     artist,
-		Cover:      cover,
-		Type:       "album",
+		Title:  res.Title,
+		Artist: artist,
+		Cover:  cover,
 	}
 
-	return album, nil
+	return client.MediaItem{
+		Type:       c.mediaType,
+		ExternalID: res.ExternalID,
+		Data:       album,
+	}, nil
 }

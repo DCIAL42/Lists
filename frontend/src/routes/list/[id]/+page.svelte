@@ -7,11 +7,12 @@
     let { data } = $props();
 
     let list = $derived(data.list);
+    let items = $derived(list.items);
 </script>
 
 <main>
     <div class="topbar">
-        <Button variant="ghost" onclick={() => goto("..")}>
+        <Button variant="ghost" onclick={() => goto("/list")}>
             <ArrowLeft />
         </Button>
         <div class="list-details">
@@ -19,7 +20,7 @@
             <p class="subtitle">{list.created_by}</p>
         </div>
     </div>
-    <List bind:items={list.items} />
+    <List bind:items />
 </main>
 
 <style>

@@ -9,12 +9,13 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 
 	"github.com/DCIAL42/media/internals/client"
 )
 
-func (c *Client) GetResultType() string {
-	return c.resultType
+func (c *Client) GetMediaType() client.MediaType {
+	return c.mediaType
 }
 
 func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, error) {
@@ -31,11 +32,9 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 
 	for _, r := range data.Results {
 		movies = append(movies, Movie{
-			ExternalID: r.ExternalID,
 			Title:      r.Title,
 			Popularity: r.Popularity,
 			Poster:     "https://image.tmdb.org/t/p/w500" + r.Poster,
-			Type:       c.resultType,
 		})
 	}
 
@@ -43,10 +42,14 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 		return movies[i].Popularity > movies[j].Popularity
 	})
 
-	results := make([]any, 0, len(movies))
+	results := make([]client.MediaItem, 0, len(movies))
 
-	for _, m := range movies {
-		results = append(results, m)
+	for i, m := range movies {
+		results = append(results, client.MediaItem{
+			Type:       c.mediaType,
+			ExternalID: strconv.Itoa(data.Results[i].ExternalID),
+			Data:       m,
+		})
 	}
 
 	return client.SearchResult{Items: results}, nil
@@ -111,4 +114,40 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (client.S
 	maps.Copy(params, c.configParams)
 
 	return client.Search(ctx, c, params)
+}
+
+func (c *Client) GetItem(ID string) (client.MediaItem, error) {
+	if len(ID) == 0 {
+		return client.MediaItem{}, errors.ErrUnsupported
+	}
+	targetUrl := c.baseURL + "/movie/" + ID
+
+	resp, err := c.TryRequest(context.Background(), targetUrl)
+
+	if err != nil {
+		return client.MediaItem{}, err
+	}
+
+	var res MovieResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&res)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return client.MediaItem{}, err
+	}
+
+	defer resp.Body.Close()
+
+	movie := Movie{
+		Title:      res.Title,
+		Popularity: res.Popularity,
+		Poster:     "https://image.tmdb.org/t/p/w500" + res.Poster,
+	}
+
+	return client.MediaItem{
+		Type:       c.mediaType,
+		ExternalID: strconv.Itoa(res.ExternalID),
+		Data:       movie,
+	}, nil
 }

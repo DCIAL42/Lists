@@ -7,7 +7,7 @@ type SearchService struct {
 }
 
 type QueryParams struct {
-	Query string `form:"query"`
-	Types string `form:"type"`
-	Page  string `form:"page"`
+	Query string           `form:"query"`
+	Types client.MediaType `form:"type"`
+	Page  string           `form:"page"`
 }

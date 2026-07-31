@@ -25,7 +25,7 @@
 
         const data = await response.json();
 
-        goto(`/list/${data.ID}`);
+        goto(`/list/${data.id}`);
     }
 
     let loading = $state(false);
@@ -58,7 +58,7 @@
     <div class="search-panel">
         <SearchForm bind:items />
     </div>
-    <List bind:items {loading} />
+    <List bind:items {loading} editing={true} />
 </main>
 
 {#if showBackConfirm}

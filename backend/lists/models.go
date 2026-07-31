@@ -1,30 +1,39 @@
 package lists
 
 import (
+	"time"
+
+	"github.com/DCIAL42/media/internals/client"
 	"gorm.io/gorm"
 )
 
-const (
-	ItemTypeAlbum = "album"
-	ItemTypeMovie = "movie"
-)
+type Model struct {
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty"`
+}
 
 type ListItem struct {
-	gorm.Model
+	Model
 	ListID     uint
-	Type       string
+	Type       client.MediaType
 	ExternalID string `json:"external_id"`
 }
 
 type List struct {
-	gorm.Model
+	Model
 	Title     string     `json:"title"`
 	CreatedBy string     `json:"created_by"`
 	Items     []ListItem `gorm:"foreignKey:ListID" json:"items"`
 }
 
+// type ListItemResponse struct {
+// 	client.MediaItem
+// }
+
 type ListResponse struct {
-	Title     string `json:"title"`
-	CreatedBy string `json:"created_by"`
-	Items     []any  `json:"items"`
+	Title     string             `json:"title"`
+	CreatedBy string             `json:"created_by"`
+	Items     []client.MediaItem `json:"items"`
 }

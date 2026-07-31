@@ -3,22 +3,38 @@ package lists
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
-	"github.com/DCIAL42/media/internals/music"
+	"github.com/DCIAL42/media/internals/client"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 // TODO: Improve error handling around all db calls
 
-type Service struct {
-	db          *gorm.DB
-	musicClient *music.Client
+type HttpError struct {
+	Code    int
+	Message string
+	Err     error
 }
 
-func NewService(musicClient *music.Client) *Service {
+func (e *HttpError) Error() string {
+	if e.Err != nil {
+		return e.Message + ": " + e.Err.Error()
+	}
+	return e.Message
+}
+
+type Service struct {
+	db          *gorm.DB
+	musicClient client.Client
+	movieClient client.Client
+}
+
+func NewService(musicClient client.Client, movieClient client.Client) *Service {
 	return &Service{
 		musicClient: musicClient,
+		movieClient: movieClient,
 	}
 }
 
@@ -37,12 +53,26 @@ func initDB() (*gorm.DB, error) {
 	return db, err
 }
 
-func (s *Service) resolveItem(item ListItem) (any, error) {
+func (s *Service) resolveItem(item ListItem) (client.MediaItem, error) {
 	switch item.Type {
-	case ItemTypeAlbum:
-		return s.musicClient.GetAlbum(item.ExternalID)
+	case client.TypeAlbum:
+		album, err := s.musicClient.GetItem(item.ExternalID)
+
+		if err != nil {
+			return client.MediaItem{}, err
+		}
+
+		return album, nil
+	case client.TypeMovie:
+		movie, err := s.movieClient.GetItem(item.ExternalID)
+
+		if err != nil {
+			return client.MediaItem{}, err
+		}
+
+		return movie, nil
 	}
-	return nil, errors.New("Invalid item type, unable to resolve.")
+	return client.MediaItem{}, errors.New("Invalid item type, unable to resolve.")
 }
 
 func (s *Service) createList(req List) (List, error) {
@@ -57,6 +87,8 @@ func (s *Service) createList(req List) (List, error) {
 	if result.Error != nil {
 		return List{}, result.Error
 	}
+
+	fmt.Println(req)
 
 	return req, nil
 }
@@ -74,19 +106,20 @@ func (s *Service) getListById(id uint) (ListResponse, error) {
 	result := db.Preload("Items").First(&list, id)
 
 	if result.Error != nil {
-		return ListResponse{}, err
+		return ListResponse{}, &HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
 	}
 
-	resolved := make([]any, 0)
+	resolved := make([]client.MediaItem, 0)
 
 	for _, item := range list.Items {
 		res, err := s.resolveItem(item)
 
 		if err != nil {
-			continue
+			return ListResponse{}, &HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 		}
 
-		fmt.Printf("%+v", res)
+		fmt.Printf("%+v\n", res)
+
 		resolved = append(resolved, res)
 	}
 
@@ -99,42 +132,46 @@ func (s *Service) getListById(id uint) (ListResponse, error) {
 	return res, nil
 }
 
-func (s *Service) getAllLists() ([]List, error) {
+func (s *Service) getAllLists(page uint) ([]ListResponse, error) {
 	db, err := initDB()
 
 	if err != nil {
-		return []List{}, err
+		return []ListResponse{}, err
 	}
 
 	lists := make([]List, 0)
 
-	result := db.Find(&lists)
+	result := db.Limit(10).Offset((int(page) - 1) * 10).Preload("Items").Find(&lists)
 
 	if result.Error != nil {
-		return []List{}, err
+		return []ListResponse{}, err
 	}
 
-	fmt.Println(lists)
+	res := make([]ListResponse, 0, len(lists))
 
-	return lists, nil
+	for _, list := range lists {
+		items := make([]client.MediaItem, 0, len(list.Items))
 
-	// resolved := make([]any, 0)
-	// for _, item := range list.Items {
-	// 	res, err := s.resolveItem(item)
-	//
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	//
-	// 	fmt.Printf("%+v", res)
-	// 	resolved = append(resolved, res)
-	// }
-	//
-	// res := ListResponse{
-	// 	Title:     list.Title,
-	// 	CreatedBy: list.CreatedBy,
-	// 	Items:     resolved,
-	// }
-	//
-	// return res, nil
+		for _, item := range list.Items {
+			resolved, err := s.resolveItem(item)
+
+			if err != nil {
+				// continue
+				return []ListResponse{}, err
+			}
+
+			items = append(items, client.MediaItem{
+				Type: item.Type,
+				Data: resolved,
+			})
+		}
+
+		res = append(res, ListResponse{
+			Title:     list.Title,
+			CreatedBy: list.CreatedBy,
+			Items:     items,
+		})
+	}
+
+	return res, nil
 }
