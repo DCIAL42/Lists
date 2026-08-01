@@ -2,10 +2,24 @@ package lists
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
+
+func NextPage(u *url.URL) string {
+	q := u.Query()
+	page := q.Get("page")
+	page_num, err := strconv.Atoi(page)
+	if err != nil {
+		page_num = 1
+	}
+	page_num++
+	q.Set("page", strconv.Itoa(page_num))
+	u.RawQuery = q.Encode()
+	return u.String()
+}
 
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	r.GET("/:id", func(c *gin.Context) {
@@ -57,7 +71,8 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 
-		c.IndentedJSON(http.StatusOK, lists)
+		next := NextPage(c.Request.URL)
+		c.IndentedJSON(http.StatusOK, gin.H{"lists": lists, "next": next})
 	})
 
 	r.POST("/", func(c *gin.Context) {

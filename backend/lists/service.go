@@ -88,8 +88,6 @@ func (s *Service) createList(req List) (List, error) {
 		return List{}, result.Error
 	}
 
-	fmt.Println(req)
-
 	return req, nil
 }
 
@@ -117,8 +115,6 @@ func (s *Service) getListById(id uint) (ListResponse, error) {
 		if err != nil {
 			return ListResponse{}, &HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 		}
-
-		fmt.Printf("%+v\n", res)
 
 		resolved = append(resolved, res)
 	}
@@ -156,8 +152,8 @@ func (s *Service) getAllLists(page uint) ([]ListResponse, error) {
 			resolved, err := s.resolveItem(item)
 
 			if err != nil {
-				// continue
-				return []ListResponse{}, err
+				continue
+				// return []ListResponse{}, err
 			}
 
 			items = append(items, client.MediaItem{

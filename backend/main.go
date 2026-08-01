@@ -51,7 +51,7 @@ func main() {
 
 	r.GET("/search", s.Search)
 
-	listGroup := api.Group("/list")
+	listGroup := api.Group("/lists")
 
 	listService := lists.NewService(musicClient, movieClient)
 
