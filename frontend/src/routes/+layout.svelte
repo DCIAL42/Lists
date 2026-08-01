@@ -13,8 +13,8 @@
 <nav>
     <Link href="/" class="page-title">Home</Link>
     <div class="page-links">
-        <Link href="/music">Music</Link>
-        <Link href="/movies">Movies</Link>
+        <Link href="/lists">Lists</Link>
+        <!-- <Link href="/movies">Movies</Link> -->
     </div>
     <div>
         <Link href="/profile">Profile</Link>
