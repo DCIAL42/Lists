@@ -2,7 +2,7 @@ import { error } from "@sveltejs/kit"
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async ({ params }) => {
-    const response = await fetch(`http://localhost:8080/api/list/${params.id}`)
+    const response = await fetch(`http://localhost:8080/api/lists/${params.id}`)
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))

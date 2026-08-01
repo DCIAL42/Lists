@@ -1,7 +1,7 @@
 import type { PageServerLoad } from "./$types"
 
 export const load: PageServerLoad = async () => {
-    const response = await fetch(`http://localhost:8080/api/list/`)
+    const response = await fetch(`http://localhost:8080/api/lists/`)
 
     if (!response.ok) {
         throw new Error(`Failed to fetch lists`)
@@ -9,7 +9,5 @@ export const load: PageServerLoad = async () => {
 
     const lists = await response.json()
 
-    return {
-        lists: lists
-    }
+    return lists
 }

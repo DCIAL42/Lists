@@ -25,7 +25,7 @@
 
         const data = await response.json();
 
-        goto(`/list/${data.id}`);
+        goto(`/lists/${data.id}`);
     }
 
     let loading = $state(false);
