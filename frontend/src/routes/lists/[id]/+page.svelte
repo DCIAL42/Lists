@@ -12,7 +12,7 @@
 
 <main>
     <div class="topbar">
-        <Button variant="ghost" onclick={() => goto("../")}>
+        <Button variant="ghost" onclick={() => goto("/lists")}>
             <ArrowLeft />
         </Button>
         <div class="list-details">

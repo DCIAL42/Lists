@@ -13,10 +13,9 @@
         }
         data = await res.json();
     }
-    $inspect(data);
 </script>
 
-<Link href="/list/create">Create new list</Link>
+<Link href="/lists/create">Create new list</Link>
 
 {#each lists as list}
     <ListPreview {list} />

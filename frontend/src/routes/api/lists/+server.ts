@@ -16,9 +16,7 @@ export const POST: RequestHandler = async ({ request }) => {
     const res = await fetch(url, {
         method: 'POST',
         body: JSON.stringify(body),
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: request.headers,
     })
 
     const data = await res.json()

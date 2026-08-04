@@ -65,7 +65,7 @@
     {:else}
         {#each tag_items(items) as item, index (index)}
             <ListItemCard
-                item={item.data}
+                {item}
                 {index}
                 {editing}
                 dragging={dragIdx === index}

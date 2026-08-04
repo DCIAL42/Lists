@@ -1,6 +1,7 @@
 <script lang="ts">
     import Button from "$lib/components/Button.svelte";
-    import ListItem from "$lib/ListItem.svelte";
+    import ListItemCard from "$lib/ListItemCard.svelte";
+    import type { MediaItem } from "$lib/types";
     import {
         removeItem,
         SortableList,
@@ -15,48 +16,7 @@
         things.push(`thing${i}`);
     }
     let cols = $state(1);
-    let items: SortableList.ItemData[] = $state([
-        {
-            id: "1",
-            title: "Either/Or",
-            artist: "Elliott Smith",
-            cover: "https://placehold.co/250",
-        },
-        {
-            id: "2",
-            title: "In Rainbows",
-            artist: "Radiohead",
-            cover: "https://placehold.co/250",
-        },
-        {
-            id: "3",
-            title: "Currents",
-            artist: "Tame Impala",
-            cover: "https://placehold.co/250",
-        },
-        {
-            id: "4",
-            title: "Random Access Memories",
-            artist: "Daft Punk",
-            cover: "https://placehold.co/250",
-        },
-    ]);
 
-    function handleDragEnd(e: SortableList.RootEvents["ondragend"]) {
-        const { draggedItemIndex, targetItemIndex, isCanceled } = e;
-        if (
-            !isCanceled &&
-            typeof targetItemIndex === "number" &&
-            draggedItemIndex !== targetItemIndex
-        )
-            items = sortItems(items, draggedItemIndex, targetItemIndex);
-    }
-
-    function onRemoveClick(_: MouseEvent, i: number) {
-        items = removeItem(items, i);
-    }
-
-    let dragIdx = $state<number | null>(null);
     let loading = $state(false);
 </script>
 
@@ -80,39 +40,6 @@
 <!-- <Button><Plus /></Button> -->
 
 <!-- <Skeleton size={250} /> -->
-<Button onclick={() => (loading = !loading)}>Toggle loading</Button>
-<main>
-    <div class="sidebar">
-        <h1 class="title">List Name</h1>
-        <p class="subtitle">List creator</p>
-        <p>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Enim
-            beatae, minima explicabo repudiandae obcaecati nihil totam facilis
-            iure deleniti a vero alias possimus provident, eveniet nobis
-            quibusdam delectus fugiat optio?
-        </p>
-    </div>
-    <div class="list">
-        <SortableList.Root
-            ondragend={handleDragEnd}
-            ondrag={(e) => (dragIdx = e.draggedItemIndex)}
-            ondrop={() => (dragIdx = null)}
-            isLocked={loading}
-        >
-            {#each items as item, index (item.id)}
-                <SortableList.Item {...item} {index}>
-                    <ListItem
-                        {item}
-                        {index}
-                        dragging={dragIdx === index}
-                        bind:loading
-                        {onRemoveClick}
-                    />
-                </SortableList.Item>
-            {/each}
-        </SortableList.Root>
-    </div>
-</main>
 
 <style>
     .outer {

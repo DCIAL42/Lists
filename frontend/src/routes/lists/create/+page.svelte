@@ -5,17 +5,23 @@
     import ArrowLeft from "$lib/icons/ArrowLeft.svelte";
     import { goto } from "$app/navigation";
     import List from "$lib/List.svelte";
+    import { useClerkContext } from "svelte-clerk";
 
     let items = $state([]);
+
+    const ctx = useClerkContext();
 
     async function handleSave() {
         let list = $state.snapshot(listForm);
 
-        const response = await fetch("/api/list", {
+        const token = await ctx.session?.getToken();
+
+        const response = await fetch("/api/lists", {
             method: "POST",
             body: JSON.stringify(list),
             headers: {
                 "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
             },
         });
 
@@ -65,7 +71,9 @@
     <div class="back-confirm">
         <p>Are you sure you want to go back, changes will be lost</p>
         <Button onclick={() => (showBackConfirm = false)}>Cancel</Button>
-        <Button variant="warning" onclick={() => goto("..")}>Confirm</Button>
+        <Button variant="warning" onclick={() => goto("/lists")}>
+            Confirm
+        </Button>
     </div>
 {/if}
 

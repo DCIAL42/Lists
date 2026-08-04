@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ url }) => {
         )
     }
 
-    let u = `http://localhost:8080/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`
+    let u = `http://localhost:8080/api/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`
     if (page !== null) {
         u += `&page=${page}`
     }
