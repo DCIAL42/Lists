@@ -11,10 +11,11 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/internals/client"
 )
 
-func (c *Client) GetMediaType() client.MediaType {
+func (c *Client) GetMediaType() cmn.MediaType {
 	return c.mediaType
 }
 
@@ -42,10 +43,10 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 		return movies[i].Popularity > movies[j].Popularity
 	})
 
-	results := make([]client.MediaItem, 0, len(movies))
+	results := make([]cmn.MediaItem, 0, len(movies))
 
 	for i, m := range movies {
-		results = append(results, client.MediaItem{
+		results = append(results, cmn.MediaItem{
 			Type:       c.mediaType,
 			ExternalID: strconv.Itoa(data.Results[i].ExternalID),
 			Data:       m,
@@ -116,16 +117,16 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (client.S
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (client.MediaItem, error) {
+func (c *Client) GetItem(ID string) (cmn.MediaItem, error) {
 	if len(ID) == 0 {
-		return client.MediaItem{}, errors.ErrUnsupported
+		return cmn.MediaItem{}, errors.ErrUnsupported
 	}
 	targetUrl := c.baseURL + "/movie/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)
 
 	if err != nil {
-		return client.MediaItem{}, err
+		return cmn.MediaItem{}, err
 	}
 
 	var res MovieResponse
@@ -134,7 +135,7 @@ func (c *Client) GetItem(ID string) (client.MediaItem, error) {
 
 	if err != nil {
 		slog.Error(err.Error())
-		return client.MediaItem{}, err
+		return cmn.MediaItem{}, err
 	}
 
 	defer resp.Body.Close()
@@ -145,7 +146,7 @@ func (c *Client) GetItem(ID string) (client.MediaItem, error) {
 		Poster:     "https://image.tmdb.org/t/p/w500" + res.Poster,
 	}
 
-	return client.MediaItem{
+	return cmn.MediaItem{
 		Type:       c.mediaType,
 		ExternalID: strconv.Itoa(res.ExternalID),
 		Data:       movie,

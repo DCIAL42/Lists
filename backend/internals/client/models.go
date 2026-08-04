@@ -3,13 +3,8 @@ package client
 import (
 	"context"
 	"net/http"
-)
 
-type MediaType string
-
-const (
-	TypeAlbum MediaType = "album"
-	TypeMovie MediaType = "movie"
+	"github.com/DCIAL42/media/cmn"
 )
 
 type Client interface {
@@ -17,17 +12,11 @@ type Client interface {
 	TryRequest(context.Context, string) (*http.Response, error)
 	ReadToSearchResult(*http.Response) (SearchResult, error)
 	Search(context.Context, map[string]string) (SearchResult, error)
-	GetMediaType() MediaType
-	GetItem(string) (MediaItem, error)
-}
-
-type MediaItem struct {
-	Type       MediaType `json:"type"`
-	ExternalID string    `json:"external_id"`
-	Data       any       `json:"data"`
+	GetMediaType() cmn.MediaType
+	GetItem(string) (cmn.MediaItem, error)
 }
 
 type SearchResult struct {
-	Next  string      `json:"next"`
-	Items []MediaItem `json:"items"`
+	Next  string          `json:"next"`
+	Items []cmn.MediaItem `json:"items"`
 }

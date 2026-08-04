@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/internals/client"
 )
 
@@ -21,7 +22,7 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (c *Client) GetMediaType() client.MediaType {
+func (c *Client) GetMediaType() cmn.MediaType {
 	return c.mediaType
 }
 
@@ -37,7 +38,7 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 
 	defer resp.Body.Close()
 
-	albums := make([]client.MediaItem, 0, len(data.Albums.Items))
+	albums := make([]cmn.MediaItem, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
 		var artist string
@@ -50,7 +51,7 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 			cover = r.Images[0].URL
 		}
 
-		albums = append(albums, client.MediaItem{
+		albums = append(albums, cmn.MediaItem{
 			Type:       c.mediaType,
 			ExternalID: r.ExternalID,
 			Data: Album{
@@ -172,13 +173,13 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (client.S
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (client.MediaItem, error) {
+func (c *Client) GetItem(ID string) (cmn.MediaItem, error) {
 	targetUrl := c.baseURL + "/albums/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)
 
 	if err != nil {
-		return client.MediaItem{}, err
+		return cmn.MediaItem{}, err
 	}
 
 	var res AlbumResponse
@@ -187,7 +188,7 @@ func (c *Client) GetItem(ID string) (client.MediaItem, error) {
 
 	if err != nil {
 		slog.Error(err.Error())
-		return client.MediaItem{}, err
+		return cmn.MediaItem{}, err
 	}
 
 	defer resp.Body.Close()
@@ -208,7 +209,7 @@ func (c *Client) GetItem(ID string) (client.MediaItem, error) {
 		Cover:  cover,
 	}
 
-	return client.MediaItem{
+	return cmn.MediaItem{
 		Type:       c.mediaType,
 		ExternalID: res.ExternalID,
 		Data:       album,

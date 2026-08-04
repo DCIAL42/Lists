@@ -3,14 +3,14 @@ package movies
 import (
 	"net/http"
 
-	"github.com/DCIAL42/media/internals/client"
+	"github.com/DCIAL42/media/cmn"
 )
 
 type Client struct {
 	httpClient   *http.Client
 	baseURL      string
 	searchPath   string
-	mediaType    client.MediaType
+	mediaType    cmn.MediaType
 	configParams map[string]string
 	headers      map[string]string
 }
