@@ -1,15 +1,21 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/gin-gonic/gin"
 )
 
 func WrapClerkMiddleware(clerkMiddleWare func(http.Handler) http.Handler) gin.HandlerFunc {
-	clerk.SetKey("sk_test_XsiGhkWZeft81IydOVTHATS9UQZcrNDXckEPlym9M6")
+	clerkSecret, ok := os.LookupEnv("CLERK_SECRET_KEY")
+
+	if !ok {
+		panic("clerk secret key not found")
+	}
+
+	clerk.SetKey(clerkSecret)
 
 	return func(c *gin.Context) {
 		var called bool
@@ -34,7 +40,6 @@ func RequireUser() gin.HandlerFunc {
 		claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())
 
 		if !ok {
-			fmt.Println("notok")
 			c.IndentedJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}

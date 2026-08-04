@@ -2,6 +2,7 @@ package cmn
 
 import (
 	"errors"
+	"net/http"
 	"net/url"
 	"strconv"
 
@@ -75,4 +76,12 @@ func (e *HttpError) Error() string {
 		return e.Message + ": " + e.Err.Error()
 	}
 	return e.Message
+}
+
+func HandleError(c *gin.Context, err error) {
+	if httpErr, ok := errors.AsType[*HttpError](err); ok {
+		c.IndentedJSON(httpErr.Code, gin.H{"error": httpErr.Error()})
+	}
+
+	c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 }

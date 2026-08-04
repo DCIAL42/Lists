@@ -4,16 +4,16 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 
+	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
 
-func NewSearchService(clients ...client.Client) SearchService {
+func NewSearchService(clients map[cmn.MediaType]client.Client) SearchService {
 	return SearchService{clients}
 }
 
@@ -36,13 +36,11 @@ func (s *SearchService) Search(c *gin.Context) {
 	g, ctx := errgroup.WithContext(c.Request.Context())
 	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
 
-	for _, client := range s.clients {
-		if !slices.Contains(resultTypes, string(client.GetMediaType())) {
-			continue
-		}
+	for _, resultType := range resultTypes {
+		cl := s.clients[cmn.MediaType(resultType)]
 
 		g.Go(func() error {
-			r, err := client.Search(ctx, map[string]string{"query": queryParams.Query, "page": queryParams.Page})
+			r, err := cl.Search(ctx, map[string]string{"query": queryParams.Query, "page": queryParams.Page})
 
 			if err != nil {
 				slog.Error(err.Error())

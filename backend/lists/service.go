@@ -1,11 +1,12 @@
 package lists
 
 import (
-	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/media/db"
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/users"
 	"gorm.io/gorm"
@@ -14,16 +15,12 @@ import (
 // TODO: Improve error handling around all db calls
 
 type Service struct {
-	db          *gorm.DB
-	musicClient client.Client
-	movieClient client.Client
+	*db.DBService
 }
 
-func NewService(db *gorm.DB, musicClient client.Client, movieClient client.Client) *Service {
+func NewService(DB *gorm.DB, clients map[cmn.MediaType]client.Client, config ...*db.ServiceConfig) *Service {
 	return &Service{
-		db:          db,
-		musicClient: musicClient,
-		movieClient: movieClient,
+		DBService: db.NewDBService(DB, clients, config...),
 	}
 }
 
@@ -31,7 +28,7 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 	resolvedItems := make([]cmn.MediaItem, 0, len(list.Items))
 
 	for _, item := range list.Items {
-		resolvedItem, err := s.resolveItem(item.Type, item.ExternalID)
+		resolvedItem, err := s.ResolveItem(item.Type, item.ExternalID)
 
 		if err != nil {
 			return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
@@ -54,18 +51,8 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 	}, nil
 }
 
-func (s *Service) resolveItem(t cmn.MediaType, externalID string) (cmn.MediaItem, error) {
-	switch t {
-	case cmn.TypeAlbum:
-		return s.musicClient.GetItem(externalID)
-	case cmn.TypeMovie:
-		return s.movieClient.GetItem(externalID)
-	}
-	return cmn.MediaItem{}, errors.New("Invalid item type, unable to resolve.")
-}
-
-func (s *Service) createList(list List) (ListResponse, error) {
-	result := s.db.Create(&list)
+func (s *Service) createList(list List) (res ListResponse, err error) {
+	result := s.DB.Create(&list)
 
 	if result.Error != nil {
 		return ListResponse{}, result.Error
@@ -77,10 +64,11 @@ func (s *Service) createList(list List) (ListResponse, error) {
 func (s *Service) getListById(id uint) (res ListResponse, err error) {
 	var list List
 
-	result := s.db.Preload("Items").First(&list, id)
+	result := s.DB.Preload("Items").First(&list, id)
 
 	if result.Error != nil {
-		return ListResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
+		return
 	}
 
 	return s.toListResponse(list)
@@ -89,7 +77,7 @@ func (s *Service) getListById(id uint) (res ListResponse, err error) {
 func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
 	lists := make([]List, 0)
 
-	result := s.db.Limit(100).Offset((int(page) - 1) * 100).Preload("Items").Find(&lists)
+	result := s.DB.Limit(int(s.PageSize)).Offset((int(page) - 1) * int(s.PageSize)).Preload("Items").Find(&lists)
 
 	if result.Error != nil {
 		err = result.Error
@@ -102,6 +90,7 @@ func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
 		listResponse, err := s.toListResponse(list)
 
 		if err != nil {
+			slog.Error("Failed converting to list response", "error:", err.Error())
 			continue
 		}
 

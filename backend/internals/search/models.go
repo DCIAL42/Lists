@@ -6,7 +6,7 @@ import (
 )
 
 type SearchService struct {
-	clients []client.Client
+	clients map[cmn.MediaType]client.Client
 }
 
 type QueryParams struct {

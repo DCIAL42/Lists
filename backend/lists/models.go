@@ -13,8 +13,8 @@ type ListItem struct {
 
 type List struct {
 	cmn.Model
-	Title     string `json:"title"`
 	UserID    string
+	Title     string     `json:"title"`
 	CreatedBy string     `json:"created_by"`
 	Items     []ListItem `gorm:"foreignKey:ListID" json:"items"`
 }

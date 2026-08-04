@@ -42,15 +42,24 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		c.IndentedJSON(http.StatusOK, res)
 	})
 
-	protected.PATCH("/", func(c *gin.Context) {
+	protected.PATCH("/:id", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
+
+		id, err := cmn.ParseParam[uint](c, "id")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
 		var item TrackingItem
 
 		if err := c.ShouldBindJSON(&item); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+
+		item.ID = id
 
 		item.UserID = userID
 
@@ -99,6 +108,44 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		pat := TrackingItem{
 			UserID: userID,
+			Status: TrackingStatus(status),
+			Type:   cmn.MediaType(mediaType),
+		}
+
+		fmt.Printf("%+v\n", pat)
+
+		list, err := s.getTrackingList(pat)
+
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, list)
+	})
+
+	r.GET("/dev", func(c *gin.Context) {
+		items, err := s.getAllTrackingItems()
+
+		if err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, items)
+	})
+
+	r.GET("/dev/:type/:status", func(c *gin.Context) {
+		mediaType := c.Param("type")
+
+		status := c.Param("status")
+
+		if !validStatus[status] {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
+			return
+		}
+
+		pat := TrackingItem{
 			Status: TrackingStatus(status),
 			Type:   cmn.MediaType(mediaType),
 		}

@@ -33,9 +33,12 @@ func main() {
 
 	musicClient := music.NewMusicClient(httpClient)
 	movieClient := movies.NewMovieClient(httpClient)
-	clients := []client.Client{musicClient, movieClient}
+	clients := map[cmn.MediaType]client.Client{
+		cmn.TypeAlbum: musicClient,
+		cmn.TypeMovie: movieClient,
+	}
 
-	s := search.NewSearchService(clients...)
+	s := search.NewSearchService(clients)
 
 	r := gin.Default()
 
@@ -63,11 +66,11 @@ func main() {
 	}
 
 	listGroup := api.Group("/lists")
-	listService := lists.NewService(db, musicClient, movieClient)
+	listService := lists.NewService(db, clients)
 	listService.SetupRoutes(listGroup)
 
 	trackingGroup := api.Group("/tracking")
-	trackingService := tracking.NewService(db, musicClient, movieClient)
+	trackingService := tracking.NewService(db, clients)
 	trackingService.SetupRoutes(trackingGroup)
 
 	r.Run(":8080")
