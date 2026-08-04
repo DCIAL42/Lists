@@ -2,37 +2,28 @@ package lists
 
 import (
 	"net/http"
-	"net/url"
 	"strconv"
 
+	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/media/middleware"
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/gin-gonic/gin"
 )
 
-func NextPage(u *url.URL) string {
-	q := u.Query()
-	page := q.Get("page")
-	page_num, err := strconv.Atoi(page)
-	if err != nil {
-		page_num = 1
-	}
-	page_num++
-	q.Set("page", strconv.Itoa(page_num))
-	u.RawQuery = q.Encode()
-	return u.String()
-}
-
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
-	r.GET("/:id", func(c *gin.Context) {
-		idStr := c.Param("id")
+	protected := r.Group("/")
+	protected.Use(
+		middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()),
+		middleware.RequireUser(),
+	)
 
-		val, err := strconv.ParseUint(idStr, 10, 64)
+	r.GET("/:id", func(c *gin.Context) {
+		id, err := cmn.ParseParam[uint](c, "id")
 
 		if err != nil {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid id"})
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		id := uint(val)
 
 		list, err := s.getListById(id)
 
@@ -71,17 +62,21 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
 
-		next := NextPage(c.Request.URL)
+		next := cmn.NextPage(c.Request.URL)
 		c.IndentedJSON(http.StatusOK, gin.H{"lists": lists, "next": next})
 	})
 
-	r.POST("/", func(c *gin.Context) {
+	protected.POST("/", func(c *gin.Context) {
+		userID := c.MustGet("userID").(string)
+
 		var body List
 
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
+
+		body.UserID = userID
 
 		list, err := s.createList(body)
 

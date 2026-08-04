@@ -7,11 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/internals/movies"
 	"github.com/DCIAL42/media/internals/music"
 	"github.com/DCIAL42/media/internals/search"
 	"github.com/DCIAL42/media/lists"
+	"github.com/DCIAL42/media/tracking"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/location/v2"
 	"github.com/gin-gonic/gin"
@@ -37,8 +39,6 @@ func main() {
 
 	r := gin.Default()
 
-	api := r.Group("/api")
-
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET"},
@@ -49,13 +49,26 @@ func main() {
 
 	r.Use(location.Default())
 
-	r.GET("/search", s.Search)
+	// protected := r.Group("/")
+	// protected.Use(middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()), middleware.RequireUser())
+
+	api := r.Group("/api")
+
+	api.GET("/search", s.Search)
+
+	db, err := cmn.InitDB(&lists.List{}, &lists.ListItem{}, &tracking.TrackingItem{})
+
+	if err != nil {
+		panic(err)
+	}
 
 	listGroup := api.Group("/lists")
-
-	listService := lists.NewService(musicClient, movieClient)
-
+	listService := lists.NewService(db, musicClient, movieClient)
 	listService.SetupRoutes(listGroup)
+
+	trackingGroup := api.Group("/tracking")
+	trackingService := tracking.NewService(db, musicClient, movieClient)
+	trackingService.SetupRoutes(trackingGroup)
 
 	r.Run(":8080")
 }

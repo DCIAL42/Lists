@@ -5,25 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/internals/client"
-	"gorm.io/driver/sqlite"
+	"github.com/DCIAL42/media/users"
 	"gorm.io/gorm"
 )
 
 // TODO: Improve error handling around all db calls
-
-type HttpError struct {
-	Code    int
-	Message string
-	Err     error
-}
-
-func (e *HttpError) Error() string {
-	if e.Err != nil {
-		return e.Message + ": " + e.Err.Error()
-	}
-	return e.Message
-}
 
 type Service struct {
 	db          *gorm.DB
@@ -31,143 +19,94 @@ type Service struct {
 	movieClient client.Client
 }
 
-func NewService(musicClient client.Client, movieClient client.Client) *Service {
+func NewService(db *gorm.DB, musicClient client.Client, movieClient client.Client) *Service {
 	return &Service{
+		db:          db,
 		musicClient: musicClient,
 		movieClient: movieClient,
 	}
 }
 
-func initDB() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+func (s *Service) toListResponse(list List) (res ListResponse, err error) {
+	resolvedItems := make([]cmn.MediaItem, 0, len(list.Items))
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.AutoMigrate(
-		&List{},
-		&ListItem{},
-	)
-
-	return db, err
-}
-
-func (s *Service) resolveItem(item ListItem) (client.MediaItem, error) {
-	switch item.Type {
-	case client.TypeAlbum:
-		album, err := s.musicClient.GetItem(item.ExternalID)
+	for _, item := range list.Items {
+		resolvedItem, err := s.resolveItem(item.Type, item.ExternalID)
 
 		if err != nil {
-			return client.MediaItem{}, err
+			return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 		}
 
-		return album, nil
-	case client.TypeMovie:
-		movie, err := s.movieClient.GetItem(item.ExternalID)
-
-		if err != nil {
-			return client.MediaItem{}, err
-		}
-
-		return movie, nil
-	}
-	return client.MediaItem{}, errors.New("Invalid item type, unable to resolve.")
-}
-
-func (s *Service) createList(req List) (List, error) {
-	db, err := initDB()
-
-	if err != nil {
-		return List{}, err
+		resolvedItems = append(resolvedItems, resolvedItem)
 	}
 
-	result := db.Create(&req)
-
-	if result.Error != nil {
-		return List{}, result.Error
-	}
-
-	return req, nil
-}
-
-// TODO: Add resolving of list items into full data
-func (s *Service) getListById(id uint) (ListResponse, error) {
-	db, err := initDB()
+	userDetails, err := users.GetUserDetails(list.UserID)
 
 	if err != nil {
 		return ListResponse{}, err
 	}
 
-	var list List
-
-	result := db.Preload("Items").First(&list, id)
-
-	if result.Error != nil {
-		return ListResponse{}, &HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
-	}
-
-	resolved := make([]client.MediaItem, 0)
-
-	for _, item := range list.Items {
-		res, err := s.resolveItem(item)
-
-		if err != nil {
-			return ListResponse{}, &HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
-		}
-
-		resolved = append(resolved, res)
-	}
-
-	res := ListResponse{
+	return ListResponse{
+		ID:        list.ID,
 		Title:     list.Title,
-		CreatedBy: list.CreatedBy,
-		Items:     resolved,
-	}
-
-	return res, nil
+		CreatedBy: *userDetails.Username,
+		Items:     resolvedItems,
+	}, nil
 }
 
-func (s *Service) getAllLists(page uint) ([]ListResponse, error) {
-	db, err := initDB()
-
-	if err != nil {
-		return []ListResponse{}, err
+func (s *Service) resolveItem(t cmn.MediaType, externalID string) (cmn.MediaItem, error) {
+	switch t {
+	case cmn.TypeAlbum:
+		return s.musicClient.GetItem(externalID)
+	case cmn.TypeMovie:
+		return s.movieClient.GetItem(externalID)
 	}
+	return cmn.MediaItem{}, errors.New("Invalid item type, unable to resolve.")
+}
 
-	lists := make([]List, 0)
-
-	result := db.Limit(10).Offset((int(page) - 1) * 10).Preload("Items").Find(&lists)
+func (s *Service) createList(list List) (ListResponse, error) {
+	result := s.db.Create(&list)
 
 	if result.Error != nil {
-		return []ListResponse{}, err
+		return ListResponse{}, result.Error
 	}
 
-	res := make([]ListResponse, 0, len(lists))
+	return s.toListResponse(list)
+}
+
+func (s *Service) getListById(id uint) (res ListResponse, err error) {
+	var list List
+
+	result := s.db.Preload("Items").First(&list, id)
+
+	if result.Error != nil {
+		return ListResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
+	}
+
+	return s.toListResponse(list)
+}
+
+func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
+	lists := make([]List, 0)
+
+	result := s.db.Limit(100).Offset((int(page) - 1) * 100).Preload("Items").Find(&lists)
+
+	if result.Error != nil {
+		err = result.Error
+		return
+	}
+
+	res = make([]ListResponse, 0, len(lists))
 
 	for _, list := range lists {
-		items := make([]client.MediaItem, 0, len(list.Items))
+		listResponse, err := s.toListResponse(list)
 
-		for _, item := range list.Items {
-			resolved, err := s.resolveItem(item)
-
-			if err != nil {
-				continue
-				// return []ListResponse{}, err
-			}
-
-			items = append(items, client.MediaItem{
-				Type: item.Type,
-				Data: resolved,
-			})
+		if err != nil {
+			continue
 		}
 
-		res = append(res, ListResponse{
-			Title:     list.Title,
-			CreatedBy: list.CreatedBy,
-			Items:     items,
-		})
+		res = append(res, listResponse)
 	}
 
-	return res, nil
+	return
 }
