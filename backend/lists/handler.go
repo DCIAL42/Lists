@@ -50,7 +50,8 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		lists, err := s.getAllLists(page)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			cmn.HandleError(c, err)
+			return
 		}
 
 		next := cmn.NextPage(c.Request.URL)
@@ -63,7 +64,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		var body List
 
 		if err := c.ShouldBindJSON(&body); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -72,9 +73,23 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		list, err := s.createList(body)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
+			return
 		}
 
 		c.IndentedJSON(http.StatusOK, list)
+	})
+
+	protected.DELETE("/:id", func(c *gin.Context) {
+		userID := c.MustGet("userID").(string)
+
+		id, err := cmn.ParseParam[uint](c, "id")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		s.deleteList(id, userID)
 	})
 }

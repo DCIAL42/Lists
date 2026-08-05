@@ -10,15 +10,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type HttpError struct {
-	Code    int
-	Message string
-}
-
-func (e *HttpError) Error() string {
-	return e.Message
-}
-
 type Service struct {
 	*db.DBService
 }
@@ -29,88 +20,96 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]client.Client, config ...
 	}
 }
 
-func (s *Service) createTrackingItem(req TrackingItem) (TrackingItem, error) {
+func (s *Service) createTrackingItem(req TrackingItem) (res TrackingItem, err error) {
 	result := s.DB.Create(&req)
 
 	if result.Error != nil {
-		return TrackingItem{}, result.Error
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
 	}
 
-	return req, nil
+	res = req
+
+	return
 }
 
-func (s *Service) updateTrackingItem(req TrackingItem) (TrackingItem, error) {
+func (s *Service) updateTrackingItem(req TrackingItem) (res TrackingItem, err error) {
 	result := s.DB.Where("id = ? AND user_id = ?", req.ID, req.UserID).Updates(req)
 
 	if result.Error != nil {
-		return TrackingItem{}, result.Error
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
 	}
 
 	if result.RowsAffected == 0 {
-		return TrackingItem{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
+		return
 	}
 
-	var res TrackingItem
 	s.DB.First(&res, req.ID)
 
-	return res, nil
+	return
 }
 
-func (s *Service) deleteTrackingItem(id uint, userID string) (TrackingItem, error) {
-	var item TrackingItem
-
-	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&item)
+func (s *Service) deleteTrackingItem(id uint, userID string) (res TrackingItem, err error) {
+	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&res)
 
 	if result.Error != nil {
-		return TrackingItem{}, result.Error
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
 	}
 
 	if result.RowsAffected == 0 {
-		return TrackingItem{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
+		return
 	}
 
-	return item, nil
+	return
 }
 
-func (s *Service) getTrackingList(pat TrackingItem) (TrackingListResponse, error) {
+func (s *Service) getTrackingList(pat TrackingItem) (res TrackingListResponse, err error) {
 	list := make([]TrackingItem, 0)
 
 	result := s.DB.Where(&pat).Find(&list)
 
 	if result.Error != nil {
-		return TrackingListResponse{}, &HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
+		return
 	}
 
 	resolved := make([]TrackingItemResponse, 0, len(list))
 
 	for _, item := range list {
-		res, err := s.ResolveItem(pat.Type, item.ExternalID)
+		var resItem cmn.MediaItem
+		resItem, err = s.ResolveItem(pat.Type, item.ExternalID)
 
 		if err != nil {
-			return TrackingListResponse{}, &HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
+			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
+			return
 		}
 
 		resolved = append(resolved, TrackingItemResponse{
 			ID:        item.ID,
-			MediaItem: res,
+			MediaItem: resItem,
 		})
 	}
 
-	res := TrackingListResponse{
+	res = TrackingListResponse{
 		Items: resolved,
 	}
 
-	return res, nil
+	return
 }
 
-func (s *Service) getAllTrackingItems() ([]TrackingItem, error) {
-	list := make([]TrackingItem, 0)
+func (s *Service) getAllTrackingItems() (res []TrackingItem, err error) {
+	res = make([]TrackingItem, 0)
 
-	result := s.DB.Find(&list)
+	result := s.DB.Find(&res)
 
 	if result.Error != nil {
-		return []TrackingItem{}, &HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
+		return
 	}
 
-	return list, nil
+	return
 }

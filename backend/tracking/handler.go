@@ -1,7 +1,6 @@
 package tracking
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/DCIAL42/media/cmn"
@@ -26,7 +25,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		var item TrackingItem
 
 		if err := c.ShouldBindJSON(&item); err != nil {
-			c.AbortWithError(http.StatusBadRequest, err)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -35,7 +34,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		res, err := s.createTrackingItem(item)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 
@@ -66,7 +65,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		res, err := s.updateTrackingItem(item)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 
@@ -86,8 +85,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		res, err := s.deleteTrackingItem(id, userID)
 
 		if err != nil {
-			fmt.Println(err)
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 
@@ -112,12 +110,10 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			Type:   cmn.MediaType(mediaType),
 		}
 
-		fmt.Printf("%+v\n", pat)
-
 		list, err := s.getTrackingList(pat)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 
@@ -128,7 +124,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		items, err := s.getAllTrackingItems()
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 
@@ -153,7 +149,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		list, err := s.getTrackingList(pat)
 
 		if err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, err)
+			cmn.HandleError(c, err)
 			return
 		}
 

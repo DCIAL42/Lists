@@ -11,16 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitDB(dst ...interface{}) (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+func InitDB(models ...any) (db *gorm.DB, err error) {
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	err = db.AutoMigrate(dst...)
+	err = db.AutoMigrate(models...)
 
-	return db, err
+	return
 }
 
 func NextPage(u *url.URL) string {
@@ -35,18 +35,6 @@ func NextPage(u *url.URL) string {
 	u.RawQuery = q.Encode()
 	return u.String()
 }
-
-// func ParseID(idStr string) (uint, error) {
-// 	val, err := strconv.ParseUint(idStr, 10, 64)
-//
-// 	if err != nil {
-// 		return 0, err
-// 	}
-//
-// 	id := uint(val)
-//
-// 	return id, nil
-// }
 
 func ParseParam[T int | uint](c *gin.Context, p string) (val T, err error) {
 	v := c.Param(p)
@@ -68,19 +56,16 @@ func ParseParam[T int | uint](c *gin.Context, p string) (val T, err error) {
 type HttpError struct {
 	Code    int
 	Message string
-	Err     error
 }
 
 func (e *HttpError) Error() string {
-	if e.Err != nil {
-		return e.Message + ": " + e.Err.Error()
-	}
 	return e.Message
 }
 
 func HandleError(c *gin.Context, err error) {
 	if httpErr, ok := errors.AsType[*HttpError](err); ok {
 		c.IndentedJSON(httpErr.Code, gin.H{"error": httpErr.Error()})
+		return
 	}
 
 	c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})

@@ -10,6 +10,7 @@ import (
 	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/users"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // TODO: Improve error handling around all db calls
@@ -28,10 +29,12 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 	resolvedItems := make([]cmn.MediaItem, 0, len(list.Items))
 
 	for _, item := range list.Items {
-		resolvedItem, err := s.ResolveItem(item.Type, item.ExternalID)
+		var resolvedItem cmn.MediaItem
+		resolvedItem, err = s.ResolveItem(item.Type, item.ExternalID)
 
 		if err != nil {
-			return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
+			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
+			return
 		}
 
 		resolvedItems = append(resolvedItems, resolvedItem)
@@ -40,7 +43,8 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 	userDetails, err := users.GetUserDetails(list.UserID)
 
 	if err != nil {
-		return ListResponse{}, err
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Failed to fetch user details"}
+		return
 	}
 
 	return ListResponse{
@@ -55,7 +59,24 @@ func (s *Service) createList(list List) (res ListResponse, err error) {
 	result := s.DB.Create(&list)
 
 	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
+	}
+
+	return s.toListResponse(list)
+}
+
+func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
+	var list List
+
+	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&list)
+
+	if result.Error != nil {
 		return ListResponse{}, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return ListResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
 	}
 
 	return s.toListResponse(list)
@@ -80,7 +101,7 @@ func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
 	result := s.DB.Limit(int(s.PageSize)).Offset((int(page) - 1) * int(s.PageSize)).Preload("Items").Find(&lists)
 
 	if result.Error != nil {
-		err = result.Error
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 		return
 	}
 
