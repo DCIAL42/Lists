@@ -8,17 +8,38 @@ import (
 	"sync"
 
 	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
+	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
-func NewSearchService(clients map[cmn.MediaType]client.Client) SearchService {
-	return SearchService{clients}
+func NewSearchService(clients map[cmn.MediaType]cmn.Client, db *gorm.DB) Service {
+	return Service{clients, db}
 }
 
-func (s *SearchService) Search(c *gin.Context) {
-	results := make([]client.SearchResult, 0)
+func AddTrackingInfo(db *gorm.DB, items []cmn.MediaItem, userID string) (res []cmn.MediaItem, err error) {
+	res = make([]cmn.MediaItem, 0, len(items))
+
+	for _, item := range items {
+		var tracking cmn.TrackingItem
+		db.Where("external_id = ? AND user_id = ?", item.ExternalID, userID).First(&tracking)
+
+		item.Tracking = cmn.TrackingResponse{
+			ID:     tracking.ID,
+			Status: tracking.Status,
+		}
+
+		res = append(res, item)
+	}
+
+	return
+}
+
+func (s *Service) Search(c *gin.Context) {
+	claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())
+
+	results := make([]cmn.SearchResult, 0)
 
 	var queryParams QueryParams
 
@@ -45,6 +66,10 @@ func (s *SearchService) Search(c *gin.Context) {
 			if err != nil {
 				slog.Error(err.Error())
 				return err
+			}
+
+			if ok && claims.Subject != "" {
+				r.Items, err = AddTrackingInfo(s.db, r.Items, claims.Subject)
 			}
 
 			mu.Lock()

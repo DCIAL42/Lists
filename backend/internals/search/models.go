@@ -2,15 +2,17 @@ package search
 
 import (
 	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
+	"gorm.io/gorm"
 )
 
-type SearchService struct {
-	clients map[cmn.MediaType]client.Client
+type Service struct {
+	clients map[cmn.MediaType]cmn.Client
+	db      *gorm.DB
 }
 
 type QueryParams struct {
 	Query string        `form:"query"`
 	Types cmn.MediaType `form:"type"`
 	Page  string        `form:"page"`
+	Full  bool          `form:"full"`
 }
