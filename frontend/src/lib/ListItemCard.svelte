@@ -4,24 +4,88 @@
     import Skeleton from "$lib/components/Skeleton.svelte";
     import Button from "$lib/components/Button.svelte";
     import Cross from "$lib/icons/Cross.svelte";
-    import type { MediaItem } from "$lib/types";
+    import type {
+        MediaItem,
+        TrackingPayload,
+        TrackingStatus,
+    } from "$lib/types";
     import { isAlbum } from "./utils";
+    import Bookmark from "./icons/Bookmark.svelte";
+    import Check from "./icons/Check.svelte";
+    import Pause from "./icons/Pause.svelte";
+    import { useClerkContext } from "svelte-clerk";
 
     let {
         item,
-        index,
-        dragging,
+        index = 0,
+        dragging = false,
         editing = false,
         loading = $bindable(false),
-        onRemoveClick,
+        onRemoveClick = () => {},
     }: {
         item: MediaItem;
-        index: number;
-        dragging: boolean;
+        index?: number;
+        dragging?: boolean;
         editing?: boolean;
         loading?: boolean;
-        onRemoveClick: (e: MouseEvent, i: number) => void;
+        onRemoveClick?: (e: MouseEvent, i: number) => void;
     } = $props();
+
+    const ctx = useClerkContext();
+    const userId = $derived(ctx.auth.userId);
+
+    let tracking = $derived(item.tracking.status);
+
+    async function removeTracking() {
+        const res = await fetch(`/api/tracking/${item.tracking.id}`, {
+            method: "DELETE",
+        });
+
+        const data = await res.json();
+        console.log(data);
+    }
+
+    async function updateTracking(newStatus: TrackingStatus) {
+        const res = await fetch(`/api/tracking/${item.tracking.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+                status: newStatus,
+            }),
+        });
+
+        const data = await res.json();
+        console.log(data);
+    }
+
+    async function newTracking(status: TrackingStatus) {
+        const payload: TrackingPayload = {
+            external_id: item.external_id,
+            status: status,
+            type: item.type,
+        };
+
+        const res = await fetch("/api/tracking", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        console.log(data);
+    }
+
+    function handleTrackingChange(status: TrackingStatus) {
+        if (userId === null) return;
+        console.log(status);
+
+        if (tracking === status) {
+            removeTracking();
+        } else if (tracking === undefined) {
+            newTracking(status);
+        } else {
+            updateTracking(status);
+        }
+        tracking = tracking === status ? undefined : status;
+    }
 </script>
 
 {#if loading}
@@ -57,15 +121,39 @@
                 <p class="subtitle">{item.data.artist}</p>
             {/if}
         </div>
-        {#if editing}
-            <Button
-                variant="ghost"
-                style="color:red;"
-                onclick={(e) => onRemoveClick(e, index)}
-            >
-                <Cross />
-            </Button>
-        {/if}
+        <div class="actions">
+            {#if editing}
+                <Button
+                    variant="ghost"
+                    style="color:red;"
+                    onclick={(e) => onRemoveClick(e, index)}
+                >
+                    <Cross />
+                </Button>
+            {:else}
+                <Button
+                    variant="ghost"
+                    selected={tracking === "backlog"}
+                    onclick={() => handleTrackingChange("backlog")}
+                >
+                    <Bookmark />
+                </Button>
+                <Button
+                    variant="ghost"
+                    selected={tracking === "paused"}
+                    onclick={() => handleTrackingChange("paused")}
+                >
+                    <Pause />
+                </Button>
+                <Button
+                    variant="ghost"
+                    selected={tracking === "done"}
+                    onclick={() => handleTrackingChange("done")}
+                >
+                    <Check />
+                </Button>
+            {/if}
+        </div>
     </div>
 {/if}
 
@@ -98,5 +186,10 @@
 
     .item-cover {
         width: 250px;
+    }
+
+    .actions {
+        display: flex;
+        flex-direction: column;
     }
 </style>

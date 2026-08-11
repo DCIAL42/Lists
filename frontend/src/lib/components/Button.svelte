@@ -4,15 +4,19 @@
 
     let {
         variant = "primary",
+        selected = false,
         children,
         ...props
     }: {
         variant?: "primary" | "icon" | "ghost" | "warning";
+        selected?: boolean;
         children?: Snippet<[]>;
     } & SvelteHTMLElements["button"] = $props();
 </script>
 
-<button type="button" {...props} class={variant}>{@render children?.()}</button>
+<button type="button" {...props} class={variant} class:selected>
+    {@render children?.()}
+</button>
 
 <style>
     button {
@@ -55,5 +59,9 @@
     .warning:hover {
         /* background-color: rgba(var(--warning), 0.9); */
         background-color: color-mix(in srgb, var(--warning) 70%, white);
+    }
+
+    .selected {
+        color: blue;
     }
 </style>

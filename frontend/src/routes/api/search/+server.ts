@@ -1,7 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ request, url }) => {
     const query = url.searchParams.get("query")
     const type = url.searchParams.get("type")
     const page = url.searchParams.get("page")
@@ -18,7 +18,10 @@ export const GET: RequestHandler = async ({ url }) => {
         u += `&page=${page}`
     }
 
-    const res = await fetch(u)
+    const res = await fetch(u, {
+        method: "GET",
+        headers: request.headers,
+    })
     const data = await res.json()
 
     return json(data)

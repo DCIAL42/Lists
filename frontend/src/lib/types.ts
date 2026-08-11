@@ -1,3 +1,6 @@
+export type TrackingStatus = "backlog" | "paused" | "done"
+export type MediaType = "album" | "movie" | "game" | "show"
+
 export interface Movie {
     title: string
     cover: string
@@ -10,14 +13,18 @@ export interface Album {
 }
 
 export interface MediaItem {
-    type: string
+    type: MediaType
     external_id: string
     data: Movie | Album
+    tracking: {
+        id?: number
+        status?: TrackingStatus
+    }
 }
 
 export interface ListItem {
     external_id: string
-    type: string
+    type: MediaType
 }
 
 export interface List {
@@ -30,4 +37,10 @@ export interface ListPayload {
     title: string
     created_by: string
     items: ListItem[]
+}
+
+export interface TrackingPayload {
+    external_id: string
+    status: TrackingStatus
+    type: MediaType
 }

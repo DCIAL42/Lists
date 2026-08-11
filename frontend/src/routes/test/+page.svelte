@@ -1,5 +1,6 @@
 <script lang="ts">
     import Button from "$lib/components/Button.svelte";
+    import Card from "$lib/components/Card.svelte";
     import ListItemCard from "$lib/ListItemCard.svelte";
     import type { MediaItem } from "$lib/types";
     import {
@@ -18,6 +19,16 @@
     let cols = $state(1);
 
     let loading = $state(false);
+
+    const item: MediaItem = {
+        type: "album",
+        external_id: "",
+        data: {
+            title: "test",
+            artist: "other",
+            cover: "https://placehold.co/50",
+        },
+    };
 </script>
 
 <!-- <div class="outer"> -->
@@ -40,6 +51,8 @@
 <!-- <Button><Plus /></Button> -->
 
 <!-- <Skeleton size={250} /> -->
+
+<ListItemCard {item} />
 
 <style>
     .outer {
