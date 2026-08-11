@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -22,18 +21,36 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (c *Client) GetMediaType() cmn.MediaType {
-	return c.mediaType
+func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
+	var artist string
+	if len(r.Artists) > 0 {
+		artist = r.Artists[0].Name
+	}
+
+	var cover string
+	if len(r.Images) > 0 {
+		cover = r.Images[0].URL
+	}
+
+	return cmn.MediaItem{
+		Type:       cmn.TypeAlbum,
+		ExternalID: r.ExternalID,
+		Data: Album{
+			Title:  r.Title,
+			Artist: artist,
+			Cover:  cover,
+		},
+	}
 }
 
-func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, error) {
+func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
 	var data Response
 
-	err := json.NewDecoder(resp.Body).Decode(&data)
+	err = json.NewDecoder(resp.Body).Decode(&data)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return client.SearchResult{}, err
+		return
 	}
 
 	defer resp.Body.Close()
@@ -41,28 +58,10 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 	albums := make([]cmn.MediaItem, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
-		var artist string
-		if len(r.Artists) > 0 {
-			artist = r.Artists[0].Name
-		}
-
-		var cover string
-		if len(r.Images) > 0 {
-			cover = r.Images[0].URL
-		}
-
-		albums = append(albums, cmn.MediaItem{
-			Type:       c.mediaType,
-			ExternalID: r.ExternalID,
-			Data: Album{
-				Title:  r.Title,
-				Artist: artist,
-				Cover:  cover,
-			},
-		})
+		albums = append(albums, r.toMediaItem())
 	}
 
-	return client.SearchResult{Items: albums}, nil
+	return cmn.SearchResult{Items: albums}, nil
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -117,7 +116,7 @@ func (c *Client) fetchToken(ctx context.Context) {
 		return
 	}
 
-	c.headers["Authorization"] = fmt.Sprintf("%s %s", tokenData.Type, tokenData.Token)
+	c.headers["Authorization"] = tokenData.Type + " " + tokenData.Token
 }
 
 func NewMusicClient(httpClient *http.Client) *Client {
@@ -125,7 +124,6 @@ func NewMusicClient(httpClient *http.Client) *Client {
 		httpClient,
 		"https://api.spotify.com/v1",
 		"/search",
-		"album",
 		map[string]string{
 			"type":  "album",
 			"limit": "10",
@@ -167,51 +165,31 @@ func (c *Client) TryRequest(ctx context.Context, targetUrl string) (*http.Respon
 	return nil, errors.New("Unable to make request")
 }
 
-func (c *Client) Search(ctx context.Context, params map[string]string) (client.SearchResult, error) {
+func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.SearchResult, error) {
 	maps.Copy(params, c.configParams)
 
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (cmn.MediaItem, error) {
+func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 	targetUrl := c.baseURL + "/albums/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)
 
 	if err != nil {
-		return cmn.MediaItem{}, err
+		return
 	}
 
-	var res AlbumResponse
+	var album AlbumResponse
 
-	err = json.NewDecoder(resp.Body).Decode(&res)
+	err = json.NewDecoder(resp.Body).Decode(&album)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return cmn.MediaItem{}, err
+		return
 	}
 
 	defer resp.Body.Close()
 
-	var artist string
-	if len(res.Artists) > 0 {
-		artist = res.Artists[0].Name
-	}
-
-	var cover string
-	if len(res.Images) > 0 {
-		cover = res.Images[0].URL
-	}
-
-	album := Album{
-		Title:  res.Title,
-		Artist: artist,
-		Cover:  cover,
-	}
-
-	return cmn.MediaItem{
-		Type:       c.mediaType,
-		ExternalID: res.ExternalID,
-		Data:       album,
-	}, nil
+	return album.toMediaItem(), nil
 }

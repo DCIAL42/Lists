@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/url"
 	"strconv"
+
+	"github.com/DCIAL42/media/cmn"
 )
 
 func NextPage(originalURL string) string {
@@ -25,27 +27,27 @@ func NextPage(originalURL string) string {
 	return u.String()
 }
 
-func Search(ctx context.Context, c Client, params map[string]string) (SearchResult, error) {
+func Search(ctx context.Context, c cmn.Client, params map[string]string) (res cmn.SearchResult, err error) {
 	url := c.BuildURL(params)
 
 	resp, err := c.TryRequest(ctx, url)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return SearchResult{}, err
+		return
 	}
 
 	defer resp.Body.Close()
 
-	results, err := c.ReadToSearchResult(resp)
+	res, err = c.ReadToSearchResult(resp)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return SearchResult{}, err
+		return
 	}
 
 	var originalURL string = ctx.Value("originalURL").(string)
-	results.Next = NextPage(originalURL)
+	res.Next = NextPage(originalURL)
 
-	return results, nil
+	return
 }

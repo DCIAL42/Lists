@@ -7,8 +7,8 @@ import (
 type ListItem struct {
 	cmn.Model
 	ListID     uint
-	Type       cmn.MediaType
-	ExternalID string `json:"external_id"`
+	Type       cmn.MediaType `json:"type"`
+	ExternalID string        `json:"external_id"`
 }
 
 type List struct {

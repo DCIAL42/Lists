@@ -15,18 +15,14 @@ import (
 	"github.com/DCIAL42/media/internals/client"
 )
 
-func (c *Client) GetMediaType() cmn.MediaType {
-	return c.mediaType
-}
-
-func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, error) {
+func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
 	var data Response
 
-	err := json.NewDecoder(resp.Body).Decode(&data)
+	err = json.NewDecoder(resp.Body).Decode(&data)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return client.SearchResult{}, err
+		return
 	}
 
 	movies := make([]Movie, 0, len(data.Results))
@@ -47,13 +43,13 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (client.SearchResult, e
 
 	for i, m := range movies {
 		results = append(results, cmn.MediaItem{
-			Type:       c.mediaType,
+			Type:       cmn.TypeMovie,
 			ExternalID: strconv.Itoa(data.Results[i].ExternalID),
 			Data:       m,
 		})
 	}
 
-	return client.SearchResult{Items: results}, nil
+	return cmn.SearchResult{Items: results}, nil
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -72,7 +68,6 @@ func NewMovieClient(httpClient *http.Client) *Client {
 		httpClient,
 		"https://api.themoviedb.org/3",
 		"/search/movie",
-		"movie",
 		map[string]string{},
 		map[string]string{
 			"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzYmFmYjliYjM1MjA2ZDQ0ZGNhYjU5MTc4NDNlYzdmNyIsIm5iZiI6MTc3MTI1OTA3OC40MjQsInN1YiI6IjY5OTM0NGM2MDZkZDViY2UxMzI4N2QzNSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Rx24Tn9as1XcsOypTv_Ufdx1_IWVAUfVL8RA4cIhBi0",
@@ -94,61 +89,60 @@ func (c *Client) TryRequest(ctx context.Context, url string) (*http.Response, er
 			req.Header.Set(k, v)
 		}
 
-		resp, err := c.httpClient.Do(req)
+		res, err := c.httpClient.Do(req)
 
 		if err != nil {
 			slog.Error(err.Error())
 			return nil, err
 		}
 
-		if resp.StatusCode != 200 {
-			slog.Error("Response not ok, trying again.", "StatusCode", resp.StatusCode, "API", c.baseURL)
+		if res.StatusCode != 200 {
+			slog.Error("Response not ok, trying again.", "StatusCode", res.StatusCode, "API", c.baseURL)
 			continue
 		}
 
-		return resp, nil
+		return res, nil
 	}
 	return nil, errors.New("Unable to make request")
 }
 
-func (c *Client) Search(ctx context.Context, params map[string]string) (client.SearchResult, error) {
+func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.SearchResult, error) {
 	maps.Copy(params, c.configParams)
 
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (cmn.MediaItem, error) {
+func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 	if len(ID) == 0 {
-		return cmn.MediaItem{}, errors.ErrUnsupported
+		err = errors.ErrUnsupported
+		return
 	}
 	targetUrl := c.baseURL + "/movie/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)
 
 	if err != nil {
-		return cmn.MediaItem{}, err
+		return
 	}
 
-	var res MovieResponse
+	var movie MovieResponse
 
-	err = json.NewDecoder(resp.Body).Decode(&res)
+	err = json.NewDecoder(resp.Body).Decode(&movie)
 
 	if err != nil {
 		slog.Error(err.Error())
-		return cmn.MediaItem{}, err
+		return
 	}
 
 	defer resp.Body.Close()
 
-	movie := Movie{
-		Title:      res.Title,
-		Popularity: res.Popularity,
-		Poster:     "https://image.tmdb.org/t/p/w500" + res.Poster,
-	}
-
 	return cmn.MediaItem{
-		Type:       c.mediaType,
-		ExternalID: strconv.Itoa(res.ExternalID),
-		Data:       movie,
+		Type:       cmn.TypeMovie,
+		ExternalID: strconv.Itoa(movie.ExternalID),
+		Data: Movie{
+			Title:      movie.Title,
+			Popularity: movie.Popularity,
+			Poster:     "https://image.tmdb.org/t/p/w500" + movie.Poster,
+		},
 	}, nil
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/db"
-	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/users"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -19,7 +18,7 @@ type Service struct {
 	*db.DBService
 }
 
-func NewService(DB *gorm.DB, clients map[cmn.MediaType]client.Client, config ...*db.ServiceConfig) *Service {
+func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db.ServiceConfig) *Service {
 	return &Service{
 		DBService: db.NewDBService(DB, clients, config...),
 	}

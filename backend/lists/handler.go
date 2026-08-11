@@ -6,16 +6,12 @@ import (
 
 	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/middleware"
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/gin-gonic/gin"
 )
 
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	protected := r.Group("/")
-	protected.Use(
-		middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()),
-		middleware.RequireUser(),
-	)
+	protected.Use(middleware.RequireUser())
 
 	r.GET("/:id", func(c *gin.Context) {
 		id, err := cmn.ParseParam[uint](c, "id")

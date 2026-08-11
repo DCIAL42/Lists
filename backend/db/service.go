@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
 	"gorm.io/gorm"
 )
 
@@ -15,7 +14,7 @@ type ServiceConfig struct {
 type DBService struct {
 	*ServiceConfig
 	DB      *gorm.DB
-	Clients map[cmn.MediaType]client.Client
+	Clients map[cmn.MediaType]cmn.Client
 }
 
 func defaultDBServiceConfig() *ServiceConfig {
@@ -34,7 +33,7 @@ func (s *DBService) ResolveItem(t cmn.MediaType, externalID string) (cmn.MediaIt
 	return c.GetItem(externalID)
 }
 
-func NewDBService(db *gorm.DB, clients map[cmn.MediaType]client.Client, config ...*ServiceConfig) *DBService {
+func NewDBService(db *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*ServiceConfig) *DBService {
 	var cfg *ServiceConfig
 
 	if len(config) == 0 {

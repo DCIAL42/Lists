@@ -1,11 +1,11 @@
 package tracking
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/middleware"
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,12 +17,12 @@ var validStatus = map[string]bool{
 
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	protected := r.Group("/")
-	protected.Use(middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()), middleware.RequireUser())
+	protected.Use(middleware.RequireUser())
 
 	protected.POST("/", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
 
-		var item TrackingItem
+		var item cmn.TrackingItem
 
 		if err := c.ShouldBindJSON(&item); err != nil {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -32,6 +32,37 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		item.UserID = userID
 
 		res, err := s.createTrackingItem(item)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
+	})
+
+	protected.GET("/:id", func(c *gin.Context) {
+		userID := c.MustGet("userID").(string)
+
+		id, err := cmn.ParseParam[uint](c, "id")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		var item cmn.TrackingItem
+
+		if err := c.ShouldBindJSON(&item); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		item.ID = id
+
+		item.UserID = userID
+
+		res, err := s.GetTrackingItem(item)
 
 		if err != nil {
 			cmn.HandleError(c, err)
@@ -51,7 +82,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		var item TrackingItem
+		var item cmn.TrackingItem
 
 		if err := c.ShouldBindJSON(&item); err != nil {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -92,23 +123,29 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		c.IndentedJSON(http.StatusOK, res)
 	})
 
-	protected.GET("/:type/:status", func(c *gin.Context) {
+	protected.GET("/", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
 
-		mediaType := c.Param("type")
+		mediaType := c.Query("type")
 
-		status := c.Param("status")
+		status := c.Query("status")
 
 		if !validStatus[status] {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
 			return
 		}
 
-		pat := TrackingItem{
+		if mediaType == "" || status == "" {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid query params"})
+			return
+		}
+
+		pat := cmn.TrackingItem{
 			UserID: userID,
-			Status: TrackingStatus(status),
+			Status: cmn.TrackingStatus(status),
 			Type:   cmn.MediaType(mediaType),
 		}
+		fmt.Printf("%+v\n", pat)
 
 		list, err := s.getTrackingList(pat)
 
@@ -116,6 +153,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			cmn.HandleError(c, err)
 			return
 		}
+		fmt.Println(list)
 
 		c.IndentedJSON(http.StatusOK, list)
 	})
@@ -141,8 +179,8 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		pat := TrackingItem{
-			Status: TrackingStatus(status),
+		pat := cmn.TrackingItem{
+			Status: cmn.TrackingStatus(status),
 			Type:   cmn.MediaType(mediaType),
 		}
 

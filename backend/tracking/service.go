@@ -1,11 +1,11 @@
 package tracking
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/db"
-	"github.com/DCIAL42/media/internals/client"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -14,13 +14,24 @@ type Service struct {
 	*db.DBService
 }
 
-func NewService(DB *gorm.DB, clients map[cmn.MediaType]client.Client, config ...*db.ServiceConfig) *Service {
+func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db.ServiceConfig) *Service {
 	return &Service{
 		DBService: db.NewDBService(DB, clients, config...),
 	}
 }
 
-func (s *Service) createTrackingItem(req TrackingItem) (res TrackingItem, err error) {
+func (s *Service) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
+	result := s.DB.Where(req).First(&res)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
+	}
+
+	return
+}
+
+func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
 	result := s.DB.Create(&req)
 
 	if result.Error != nil {
@@ -33,7 +44,7 @@ func (s *Service) createTrackingItem(req TrackingItem) (res TrackingItem, err er
 	return
 }
 
-func (s *Service) updateTrackingItem(req TrackingItem) (res TrackingItem, err error) {
+func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
 	result := s.DB.Where("id = ? AND user_id = ?", req.ID, req.UserID).Updates(req)
 
 	if result.Error != nil {
@@ -51,7 +62,7 @@ func (s *Service) updateTrackingItem(req TrackingItem) (res TrackingItem, err er
 	return
 }
 
-func (s *Service) deleteTrackingItem(id uint, userID string) (res TrackingItem, err error) {
+func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingItem, err error) {
 	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&res)
 
 	if result.Error != nil {
@@ -67,8 +78,8 @@ func (s *Service) deleteTrackingItem(id uint, userID string) (res TrackingItem, 
 	return
 }
 
-func (s *Service) getTrackingList(pat TrackingItem) (res TrackingListResponse, err error) {
-	list := make([]TrackingItem, 0)
+func (s *Service) getTrackingList(pat cmn.TrackingItem) (res TrackingListResponse, err error) {
+	list := make([]cmn.TrackingItem, 0)
 
 	result := s.DB.Where(&pat).Find(&list)
 
@@ -76,8 +87,9 @@ func (s *Service) getTrackingList(pat TrackingItem) (res TrackingListResponse, e
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
 		return
 	}
+	fmt.Printf("%+v\n", list)
 
-	resolved := make([]TrackingItemResponse, 0, len(list))
+	resolved := make([]cmn.MediaItem, 0, len(list))
 
 	for _, item := range list {
 		var resItem cmn.MediaItem
@@ -88,10 +100,12 @@ func (s *Service) getTrackingList(pat TrackingItem) (res TrackingListResponse, e
 			return
 		}
 
-		resolved = append(resolved, TrackingItemResponse{
-			ID:        item.ID,
-			MediaItem: resItem,
-		})
+		resItem.Tracking = cmn.TrackingResponse{
+			ID:     item.ID,
+			Status: item.Status,
+		}
+
+		resolved = append(resolved, resItem)
 	}
 
 	res = TrackingListResponse{
@@ -101,8 +115,8 @@ func (s *Service) getTrackingList(pat TrackingItem) (res TrackingListResponse, e
 	return
 }
 
-func (s *Service) getAllTrackingItems() (res []TrackingItem, err error) {
-	res = make([]TrackingItem, 0)
+func (s *Service) getAllTrackingItems() (res []cmn.TrackingItem, err error) {
+	res = make([]cmn.TrackingItem, 0)
 
 	result := s.DB.Find(&res)
 

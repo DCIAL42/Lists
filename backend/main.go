@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
 	"github.com/DCIAL42/media/internals/movies"
 	"github.com/DCIAL42/media/internals/music"
 	"github.com/DCIAL42/media/internals/search"
 	"github.com/DCIAL42/media/lists"
+	"github.com/DCIAL42/media/middleware"
 	"github.com/DCIAL42/media/tracking"
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/location/v2"
 	"github.com/gin-gonic/gin"
@@ -22,48 +23,50 @@ import (
 
 func main() {
 	godotenv.Load()
+
 	debug, ok := os.LookupEnv("DEBUG")
+
 	if ok && strings.ToUpper(debug) == "TRUE" {
 		slog.Info("Entering debug mode")
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
+
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-
-	musicClient := music.NewMusicClient(httpClient)
-	movieClient := movies.NewMovieClient(httpClient)
-	clients := map[cmn.MediaType]client.Client{
-		cmn.TypeAlbum: musicClient,
-		cmn.TypeMovie: movieClient,
-	}
-
-	s := search.NewSearchService(clients)
 
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{"GET"},
-		AllowHeaders:     []string{"Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
 	r.Use(location.Default())
 
-	// protected := r.Group("/")
-	// protected.Use(middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()), middleware.RequireUser())
+	r.Use(middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()))
 
 	api := r.Group("/api")
 
-	api.GET("/search", s.Search)
+	clients := map[cmn.MediaType]cmn.Client{
+		cmn.TypeAlbum: music.NewMusicClient(httpClient),
+		cmn.TypeMovie: movies.NewMovieClient(httpClient),
+	}
 
-	db, err := cmn.InitDB(&lists.List{}, &lists.ListItem{}, &tracking.TrackingItem{})
+	db, err := cmn.InitDB(
+		&lists.List{},
+		&lists.ListItem{},
+		&cmn.TrackingItem{},
+	)
 
 	if err != nil {
 		panic(err)
 	}
+
+	searchGroup := api.Group("/search")
+	searchService := search.NewSearchService(clients, db)
+	searchService.SetupRoutes(searchGroup)
 
 	listGroup := api.Group("/lists")
 	listService := lists.NewService(db, clients)
