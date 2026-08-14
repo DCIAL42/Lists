@@ -24,7 +24,6 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
     const url = `http://localhost:8080/api/tracking/${params.id}`
 
     const payload = await request.json()
-    console.log(payload)
 
     const res = await fetch(url, {
         method: 'PATCH',

@@ -4,7 +4,6 @@
     import type { MediaItem } from "$lib/types";
 
     let items: MediaItem[] = $state([]);
-    $inspect(items);
 </script>
 
 <SearchBox bind:items />

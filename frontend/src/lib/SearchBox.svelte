@@ -61,8 +61,6 @@
             items = results.items;
         }
     });
-
-    $inspect(results);
 </script>
 
 <form action="" class="list-form">

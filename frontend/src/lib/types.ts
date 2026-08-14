@@ -1,4 +1,4 @@
-export type TrackingStatus = "backlog" | "paused" | "done"
+export type TrackingStatus = "backlog" | "paused" | "done" | "none"
 export type MediaType = "album" | "movie" | "game" | "show"
 
 export interface Movie {

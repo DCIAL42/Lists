@@ -14,6 +14,7 @@
     import Check from "./icons/Check.svelte";
     import Pause from "./icons/Pause.svelte";
     import { useClerkContext } from "svelte-clerk";
+    import { error } from "@sveltejs/kit";
 
     let {
         item,
@@ -21,6 +22,7 @@
         dragging = false,
         editing = false,
         loading = $bindable(false),
+        numbered = false,
         onRemoveClick = () => {},
     }: {
         item: MediaItem;
@@ -28,7 +30,8 @@
         dragging?: boolean;
         editing?: boolean;
         loading?: boolean;
-        onRemoveClick?: (e: MouseEvent, i: number) => void;
+        numbered?: boolean;
+        onRemoveClick?: (i: number, e?: MouseEvent) => void;
     } = $props();
 
     const ctx = useClerkContext();
@@ -41,8 +44,9 @@
             method: "DELETE",
         });
 
-        const data = await res.json();
-        console.log(data);
+        if (!res.ok) {
+            throw error(500, "failed to delete tracking item");
+        }
     }
 
     async function updateTracking(newStatus: TrackingStatus) {
@@ -53,8 +57,9 @@
             }),
         });
 
-        const data = await res.json();
-        console.log(data);
+        if (!res.ok) {
+            throw error(500, "failed to udpate tracking item");
+        }
     }
 
     async function newTracking(status: TrackingStatus) {
@@ -69,13 +74,13 @@
             body: JSON.stringify(payload),
         });
 
-        const data = await res.json();
-        console.log(data);
+        if (!res.ok) {
+            throw error(500, "failed to create tracking item");
+        }
     }
 
     function handleTrackingChange(status: TrackingStatus) {
         if (userId === null) return;
-        console.log(status);
 
         if (tracking === status) {
             removeTracking();
@@ -85,6 +90,7 @@
             updateTracking(status);
         }
         tracking = tracking === status ? undefined : status;
+        onRemoveClick(index);
     }
 </script>
 
@@ -116,7 +122,12 @@
             class="item-cover"
         />
         <div class="list-text">
-            <h1 class="title">{index + 1}. {item.data.title}</h1>
+            <h1 class="title">
+                {#if numbered}
+                    {index + 1}.
+                {/if}
+                {item.data.title}
+            </h1>
             {#if isAlbum(item)}
                 <p class="subtitle">{item.data.artist}</p>
             {/if}
@@ -126,7 +137,7 @@
                 <Button
                     variant="ghost"
                     style="color:red;"
-                    onclick={(e) => onRemoveClick(e, index)}
+                    onclick={(e) => onRemoveClick(index, e)}
                 >
                     <Cross />
                 </Button>
