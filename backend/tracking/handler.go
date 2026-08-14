@@ -1,8 +1,8 @@
 package tracking
 
 import (
-	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/DCIAL42/media/cmn"
 	"github.com/DCIAL42/media/middleware"
@@ -30,6 +30,17 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		}
 
 		item.UserID = userID
+
+		var test cmn.TrackingItem
+
+		result := s.DB.Unscoped().Where("external_id = ? AND user_id = ?", item.ExternalID, userID).First(&test)
+
+		if result.Error == nil {
+			s.DB.Unscoped().Where(test).Update("deleted_at", nil)
+			test.Status = item.Status
+			c.IndentedJSON(http.StatusOK, test)
+			return
+		}
 
 		res, err := s.createTrackingItem(item)
 
@@ -126,7 +137,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	protected.GET("/", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
 
-		mediaType := c.Query("type")
+		mediaTypeStr := c.Query("type")
 
 		status := c.Query("status")
 
@@ -135,17 +146,22 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		if mediaType == "" || status == "" {
+		if mediaTypeStr == "" || status == "" {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid query params"})
 			return
 		}
 
-		pat := cmn.TrackingItem{
-			UserID: userID,
-			Status: cmn.TrackingStatus(status),
-			Type:   cmn.MediaType(mediaType),
+		mediaTypes := make([]cmn.MediaType, 0)
+
+		for t := range strings.SplitSeq(mediaTypeStr, "|") {
+			mediaTypes = append(mediaTypes, cmn.MediaType(t))
 		}
-		fmt.Printf("%+v\n", pat)
+
+		pat := TrackingItemQuery{
+			userID,
+			cmn.TrackingStatus(status),
+			mediaTypes,
+		}
 
 		list, err := s.getTrackingList(pat)
 
@@ -153,7 +169,6 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			cmn.HandleError(c, err)
 			return
 		}
-		fmt.Println(list)
 
 		c.IndentedJSON(http.StatusOK, list)
 	})
@@ -170,7 +185,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	})
 
 	r.GET("/dev/:type/:status", func(c *gin.Context) {
-		mediaType := c.Param("type")
+		mediaTypeStr := c.Param("type")
 
 		status := c.Param("status")
 
@@ -179,9 +194,15 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		pat := cmn.TrackingItem{
+		mediaTypes := make([]cmn.MediaType, 0)
+
+		for t := range strings.SplitSeq(mediaTypeStr, "|") {
+			mediaTypes = append(mediaTypes, cmn.MediaType(t))
+		}
+
+		pat := TrackingItemQuery{
 			Status: cmn.TrackingStatus(status),
-			Type:   cmn.MediaType(mediaType),
+			Types:  mediaTypes,
 		}
 
 		list, err := s.getTrackingList(pat)

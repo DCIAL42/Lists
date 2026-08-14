@@ -1,7 +1,6 @@
 package tracking
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/DCIAL42/media/cmn"
@@ -63,7 +62,7 @@ func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem
 }
 
 func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingItem, err error) {
-	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&res)
+	result := s.DB.Clauses(clause.Returning{}).Where("id = ? AND user_id = ?", id, userID).Delete(&res)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
@@ -78,22 +77,21 @@ func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingIt
 	return
 }
 
-func (s *Service) getTrackingList(pat cmn.TrackingItem) (res TrackingListResponse, err error) {
+func (s *Service) getTrackingList(pat TrackingItemQuery) (res TrackingListResponse, err error) {
 	list := make([]cmn.TrackingItem, 0)
 
-	result := s.DB.Where(&pat).Find(&list)
+	result := s.DB.Where("user_id = ? AND status = ? AND type IN ?", pat.UserID, pat.Status, pat.Types).Find(&list)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
 		return
 	}
-	fmt.Printf("%+v\n", list)
 
 	resolved := make([]cmn.MediaItem, 0, len(list))
 
 	for _, item := range list {
 		var resItem cmn.MediaItem
-		resItem, err = s.ResolveItem(pat.Type, item.ExternalID)
+		resItem, err = s.ResolveItem(item.Type, item.ExternalID)
 
 		if err != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
