@@ -9,9 +9,11 @@
 <SearchBox bind:items />
 
 <div class="results">
-    {#each items as item}
-        <ListItemCard {item} />
-    {/each}
+    {#if items}
+        {#each items as item}
+            <ListItemCard {item} />
+        {/each}
+    {/if}
 </div>
 
 <style>

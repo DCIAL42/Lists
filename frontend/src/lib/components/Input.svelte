@@ -20,27 +20,42 @@
     let filled = $derived(value);
 </script>
 
-<Field {label} {focused} {filled}>
+<div>
     <input
-        placeholder=""
+        placeholder={label}
         bind:value
         onfocus={() => (focused = true)}
         onblur={() => (focused = false)}
         {...props}
+        type="search"
     />
-</Field>
+</div>
 
 <style>
     input {
+        border: 1px solid var(--border);
+        border-radius: 4px;
         background-color: var(--background);
-        width: 100%;
-        border: 0;
         padding: 16.5px 14px;
-        height: 1.5em;
         font-size: inherit;
     }
 
+    input[type="search"]::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+        height: 1.2em;
+        width: 1.2em;
+        background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXgtaWNvbiBsdWNpZGUteCI+PHBhdGggZD0iTTE4IDYgNiAxOCIvPjxwYXRoIGQ9Im02IDYgMTIgMTIiLz48L3N2Zz4=)
+            no-repeat 50% 50%;
+        background-size: contain;
+        opacity: 0.5;
+        cursor: pointer;
+    }
+
+    input[type="search"]::-webkit-search-cancel-button:hover {
+        opacity: 1;
+    }
+
     input:focus {
-        outline: none;
+        outline: 1px solid black;
     }
 </style>

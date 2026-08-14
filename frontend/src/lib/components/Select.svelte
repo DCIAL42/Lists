@@ -1,56 +1,46 @@
 <script lang="ts">
     import type { SvelteHTMLElements } from "svelte/elements";
-    import Field from "./Field.svelte";
 
     let {
-        options,
+        options = [],
         label,
         value = $bindable(),
+        displayText = (t) => t,
         ...props
     }: SvelteHTMLElements["select"] & {
-        options: string[];
+        options?: string[];
         label: string;
+        displayText?: (text: string) => string;
     } = $props();
 
-    let focused = $state(false);
-    let filled = $derived(value !== "");
+    let empty = $derived(value === "");
 </script>
 
-<Field {label} {focused} {filled}>
-    <select
-        bind:value
-        {...props}
-        onfocus={() => (focused = true)}
-        onblur={() => (focused = false)}
-    >
-        <selectedcontent></selectedcontent>
-        {#each options as option}
-            <option value={option}>{option}</option>
-        {/each}
-    </select>
-</Field>
+<select bind:value {...props} placeholder={label} class:empty>
+    {#each options as option}
+        <option value={option}>{displayText(option)}</option>
+    {/each}
+</select>
 
 <style>
-    option,
-    select {
-        text-transform: capitalize;
-        text-align: left;
-    }
-
     select::picker-icon {
         transform: scale(0.75);
+        margin-inline-start: 10px;
     }
 
     select {
-        border: 0;
-        background-color: var(--background);
-        width: 100%;
+        border: 1px solid var(--border);
         padding: 16.5px 14px;
-        font-size: inherit;
         appearance: base-select;
+        border-radius: 4px;
+        gap: 0;
+    }
+
+    .empty::after {
+        content: attr(placeholder);
     }
 
     select:focus {
-        outline: none;
+        outline: 1px solid black;
     }
 </style>

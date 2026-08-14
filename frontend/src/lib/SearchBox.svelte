@@ -3,6 +3,7 @@
     import { title } from "$lib/utils";
     import type { MediaItem } from "$lib/types";
     import { useClerkContext } from "svelte-clerk";
+    import Select from "./components/Select.svelte";
 
     type SearchResponse = {
         next: string;
@@ -49,6 +50,7 @@
     };
 
     $effect(() => search());
+
     $effect(() => {
         void resultType;
 
@@ -57,26 +59,22 @@
     });
 
     $effect(() => {
-        if (results !== null) {
-            items = results.items;
-        }
+        items = results?.items || [];
     });
 </script>
 
 <form action="" class="list-form">
-    <select bind:value={resultType}>
-        <option value="" selected>Select a type to search for</option>
-        {#each resultTypes as t}
-            <option value={t}>{title(t)}</option>
-        {/each}
-    </select>
-    <div class="search-container">
-        <Input
-            label="Search..."
-            bind:value={searchQuery}
-            disabled={resultType === ""}
-        />
-    </div>
+    <Select
+        label="Select a type to search for"
+        bind:value={resultType}
+        options={resultTypes}
+        displayText={(t) => title(t)}
+    />
+    <Input
+        label="Search..."
+        bind:value={searchQuery}
+        disabled={resultType === ""}
+    />
 </form>
 
 <style>
@@ -86,12 +84,5 @@
         align-items: center;
         justify-content: center;
         margin: 10px;
-    }
-
-    .search-container {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
     }
 </style>
