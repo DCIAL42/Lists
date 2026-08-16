@@ -3,8 +3,8 @@ package tracking
 import (
 	"net/http"
 
-	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/db"
+	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

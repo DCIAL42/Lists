@@ -1,7 +1,7 @@
 package tracking
 
 import (
-	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/lists/cmn"
 )
 
 type TrackingItemQuery struct {

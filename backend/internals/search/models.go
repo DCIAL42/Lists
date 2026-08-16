@@ -1,7 +1,7 @@
 package search
 
 import (
-	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/lists/cmn"
 	"gorm.io/gorm"
 )
 

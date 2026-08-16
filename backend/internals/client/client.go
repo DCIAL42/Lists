@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/lists/cmn"
 )
 
 func NextPage(originalURL string) string {

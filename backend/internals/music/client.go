@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
+	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/internals/client"
 )
 
 type TokenResponse struct {

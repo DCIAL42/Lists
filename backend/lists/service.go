@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/db"
-	"github.com/DCIAL42/media/users"
+	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
+	"github.com/DCIAL42/lists/users"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/DCIAL42/media/cmn"
+	"github.com/DCIAL42/lists/cmn"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"

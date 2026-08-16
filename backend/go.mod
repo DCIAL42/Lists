@@ -1,4 +1,4 @@
-module github.com/DCIAL42/media
+module github.com/DCIAL42/lists
 
 go 1.26.4
 

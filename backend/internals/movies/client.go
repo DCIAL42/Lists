@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/internals/client"
+	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/internals/client"
 )
 
 func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {

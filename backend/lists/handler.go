@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/DCIAL42/media/cmn"
-	"github.com/DCIAL42/media/middleware"
+	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/middleware"
 	"github.com/gin-gonic/gin"
 )
 
