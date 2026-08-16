@@ -1,12 +1,13 @@
 <script lang="ts">
+    import type { Snippet } from "svelte";
     import type { SvelteHTMLElements } from "svelte/elements";
-    import Field from "./Field.svelte";
 
     type Props = Omit<SvelteHTMLElements["input"], "placeholder"> & {
         label?: string;
         value?: string;
         variant?: "text" | "search";
         focused?: boolean;
+        left_icon?: Snippet<[]>;
     };
 
     let {
@@ -14,13 +15,15 @@
         value = $bindable(),
         variant = "text",
         focused = $bindable<boolean>(),
+        left_icon,
         ...props
     }: Props = $props();
-
-    let filled = $derived(value);
 </script>
 
-<div>
+<div class="input-outer">
+    <div class="input-left-icon">
+        {@render left_icon?.()}
+    </div>
     <input
         placeholder={label}
         bind:value
@@ -28,16 +31,31 @@
         onblur={() => (focused = false)}
         {...props}
         type="search"
+        class:left={left_icon !== undefined}
     />
 </div>
 
 <style>
-    input {
+    .input-outer {
+        background-color: var(--background);
         border: 1px solid var(--border);
         border-radius: 4px;
-        background-color: var(--background);
-        padding: 16.5px 14px;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-outer:focus-within {
+        outline: 1px solid var(--primary);
+    }
+
+    input {
         font-size: inherit;
+        border: none;
+        padding: 16.5px 14px;
+        width: 100%;
+        flex: 1;
+        background-color: var(--background);
+        color: var(--primary);
     }
 
     input[type="search"]::-webkit-search-cancel-button {
@@ -56,6 +74,14 @@
     }
 
     input:focus {
-        outline: 1px solid black;
+        outline: none;
+    }
+
+    .input-left-icon {
+        padding-left: 10px;
+    }
+
+    .input-left-icon :global(svg) {
+        height: 16px;
     }
 </style>

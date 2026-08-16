@@ -7,6 +7,8 @@ body {
     line-height: 1.5;
     font-family: Helvetica;
     box-sizing: border-box;
+    background-color: var(--background);
+    color: var(--primary);
 }
 
 nav {
@@ -56,6 +58,23 @@ nav {
     --primary: #000000;
     --primary-muted: #000000aa;
     --primary-foreground: #ffffff;
+    --focused: #0060ffff;
+    --focused-light: #0060ffaa;
+
+    --skeleton-base: #bbbbbb;
+    --skeleton-highlight: #d0d0d0;
+    --animation-duration: 2s;
+
+    --warning: red;
+}
+
+.dark {
+    --background: #111111;
+    --nav-background: #141414;
+    --border: #374151;
+    --primary: #ffffff;
+    --primary-muted: #ffffffaa;
+    --primary-foreground: #111111;
     --focused: #0060ffff;
     --focused-light: #0060ffaa;
 
