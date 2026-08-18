@@ -94,6 +94,57 @@ func (s *Service) getListById(id uint) (res ListResponse, err error) {
 	return s.toListResponse(list)
 }
 
+func (s *Service) getListsPreviewByUser(userID string) (res []ListPreview, err error) {
+	lists := make([]List, 0)
+
+	result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
+		return
+	}
+
+	res = make([]ListPreview, 0, len(lists))
+
+	for _, list := range lists {
+		listPreview := ListPreview{
+			list.ID,
+			list.Title,
+			list.CreatedBy,
+		}
+
+		res = append(res, listPreview)
+	}
+
+	return
+}
+
+func (s *Service) getListsByUser(userID string) (res []ListResponse, err error) {
+	lists := make([]List, 0)
+
+	result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
+		return
+	}
+
+	res = make([]ListResponse, 0, len(lists))
+
+	for _, list := range lists {
+		listResponse, err := s.toListResponse(list)
+
+		if err != nil {
+			slog.Error("Failed converting to list response", "error:", err.Error())
+			continue
+		}
+
+		res = append(res, listResponse)
+	}
+
+	return
+}
+
 func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
 	lists := make([]List, 0)
 

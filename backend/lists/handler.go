@@ -54,6 +54,38 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		c.IndentedJSON(http.StatusOK, gin.H{"lists": lists, "next": next})
 	})
 
+	r.GET("/user/:id", func(c *gin.Context) {
+		// userID := c.MustGet("userID").(string)
+		id := c.Param("id")
+		format := c.DefaultQuery("fmt", "preview")
+
+		switch format {
+		case "preview":
+			lists, err := s.getListsPreviewByUser(id)
+
+			if err != nil {
+				cmn.HandleError(c, err)
+				return
+			}
+
+			c.IndentedJSON(http.StatusOK, lists)
+			return
+
+		case "full":
+			lists, err := s.getListsByUser(id)
+
+			if err != nil {
+				cmn.HandleError(c, err)
+				return
+			}
+
+			c.IndentedJSON(http.StatusOK, lists)
+			return
+		}
+
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid fmt query"})
+	})
+
 	protected.POST("/", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
 

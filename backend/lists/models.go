@@ -25,3 +25,9 @@ type ListResponse struct {
 	CreatedBy string          `json:"created_by"`
 	Items     []cmn.MediaItem `json:"items"`
 }
+
+type ListPreview struct {
+	ID        uint   `json:"id,omitempty"`
+	Title     string `json:"title"`
+	CreatedBy string `json:"created_by"`
+}
