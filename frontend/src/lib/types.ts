@@ -28,9 +28,10 @@ export interface ListItem {
 }
 
 export interface List {
+    id: number
     title: string
     created_by: string
-    items: MediaItem[]
+    items?: MediaItem[]
 }
 
 export interface ListPayload {

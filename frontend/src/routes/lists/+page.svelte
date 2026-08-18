@@ -2,8 +2,9 @@
     import Button from "$lib/components/Button.svelte";
     import Link from "$lib/components/Link.svelte";
     import ListPreview from "$lib/ListPreview.svelte";
+    import type { List } from "$lib/types";
 
-    let { data } = $props();
+    let { data }: { data: { lists: List[]; next: string } } = $props();
     let lists = $derived(data.lists);
 
     async function nextPage(url: string) {
@@ -13,6 +14,8 @@
         }
         data = await res.json();
     }
+
+    $inspect(data);
 </script>
 
 <Link href="/lists/create">Create new list</Link>

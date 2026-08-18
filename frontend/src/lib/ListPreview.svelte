@@ -5,4 +5,4 @@
     let { list }: { list: List } = $props();
 </script>
 
-<Card title={list.title} />
+<Card title={list.title} subtitle={list.created_by} />
