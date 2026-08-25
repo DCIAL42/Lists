@@ -2,21 +2,22 @@ import type { RequestHandler } from "./$types";
 import type { List, ListPayload } from "$lib/types";
 import { json } from "@sveltejs/kit";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+    const token = await locals.auth().getToken()
     let list: List = await request.json()
 
     let body: ListPayload = {
         title: list.title,
-        created_by: list.created_by,
         items: list.items.map(item => ({ ...item, external_id: String(item.external_id) }))
     }
 
-    const url = `http://localhost:8080/api/lists`
-
-    const res = await fetch(url, {
+    const res = await fetch('http://localhost:8080/api/lists', {
         method: 'POST',
         body: JSON.stringify(body),
-        headers: request.headers,
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
     })
 
     const data = await res.json()
@@ -28,7 +29,8 @@ export const GET: RequestHandler = async ({ url }) => {
     let page = url.searchParams.get("page")
 
     let u = `http://localhost:8080/api/lists`
-    if (page !== null && page !== undefined) {
+
+    if (page !== null) {
         u += `?page=${page}`
     }
 

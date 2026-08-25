@@ -2,14 +2,20 @@ import type { TrackingPayload } from "$lib/types";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 export const GET: RequestHandler = async ({ url, locals }) => {
-    const auth = locals.auth();
-    const token = await auth.getToken()
+    const token = await locals.auth().getToken();
     const mediaType = url.searchParams.get("type")
     const status = url.searchParams.get("status")
+    const page = url.searchParams.get("page")
 
-    const res = await fetch(`http://localhost:8080/api/tracking?type=${mediaType}&status=${status}`, {
+    let targetUrl = `http://localhost:8080/api/tracking?type=${mediaType}&status=${status}`
+    if (page !== null) {
+        targetUrl += `&page=${page}`
+    }
+
+    const res = await fetch(targetUrl, {
         method: 'GET',
         headers: {
+            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
         }
     })
@@ -20,8 +26,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-    const auth = locals.auth();
-    const token = await auth.getToken()
+    const token = await locals.auth().getToken();
     const url = `http://localhost:8080/api/tracking`
 
     const item: TrackingPayload = await request.json()

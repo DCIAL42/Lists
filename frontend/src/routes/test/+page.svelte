@@ -1,18 +1,12 @@
 <script lang="ts">
-    import Input from "$lib/components/Input.svelte";
-    import Select from "$lib/components/Select.svelte";
+    import SearchBar from "$lib/SearchBar.svelte";
+    import type { MediaItem } from "$lib/types";
 
-    let testOption = $state("");
+    let items: MediaItem[] = $state([]);
 </script>
 
 <main>
-    <Input />
-
-    <Select
-        options={["op 1", "op 2"]}
-        label="Test select"
-        bind:value={testOption}
-    />
+    <!-- <SearchBar bind:items /> -->
 </main>
 
 <style>

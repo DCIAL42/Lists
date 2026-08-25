@@ -1,8 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-    const auth = locals.auth();
-    const token = await auth.getToken()
+    const token = await locals.auth().getToken();
     const url = `http://localhost:8080/api/tracking/${params.id}`
 
     const res = await fetch(url, {
@@ -19,8 +18,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 }
 
 export const PATCH: RequestHandler = async ({ request, params, locals }) => {
-    const auth = locals.auth();
-    const token = await auth.getToken()
+    const token = await locals.auth().getToken();
     const url = `http://localhost:8080/api/tracking/${params.id}`
 
     const payload = await request.json()
