@@ -45,7 +45,11 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 		results = append(results, cmn.MediaItem{
 			Type:       cmn.TypeMovie,
 			ExternalID: strconv.Itoa(data.Results[i].ExternalID),
-			Data:       m,
+			Cover:      m.Poster,
+			Data: Movie{
+				Title:      m.Title,
+				Popularity: m.Popularity,
+			},
 		})
 	}
 
@@ -139,10 +143,10 @@ func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 	return cmn.MediaItem{
 		Type:       cmn.TypeMovie,
 		ExternalID: strconv.Itoa(movie.ExternalID),
+		Cover:      "https://image.tmdb.org/t/p/w500" + movie.Poster,
 		Data: Movie{
 			Title:      movie.Title,
 			Popularity: movie.Popularity,
-			Poster:     "https://image.tmdb.org/t/p/w500" + movie.Poster,
 		},
 	}, nil
 }

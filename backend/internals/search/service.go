@@ -40,6 +40,7 @@ func (s *Service) Search(c *gin.Context) {
 	claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())
 
 	results := make([]cmn.SearchResult, 0)
+	test := make(map[cmn.MediaType]cmn.SearchResult)
 
 	var queryParams QueryParams
 
@@ -51,7 +52,12 @@ func (s *Service) Search(c *gin.Context) {
 		return
 	}
 
-	resultTypes := strings.Split(string(queryParams.Types), "|")
+	var resultTypes []string
+	if queryParams.Types == "all" {
+		resultTypes = []string{"movie", "album"}
+	} else {
+		resultTypes = strings.Split(string(queryParams.Types), "|")
+	}
 
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
@@ -65,7 +71,7 @@ func (s *Service) Search(c *gin.Context) {
 
 			if err != nil {
 				slog.Error(err.Error())
-				return err
+				return nil
 			}
 
 			if ok && claims.Subject != "" {
@@ -74,6 +80,7 @@ func (s *Service) Search(c *gin.Context) {
 
 			mu.Lock()
 			results = append(results, r)
+			test[cmn.MediaType(resultType)] = r
 			mu.Unlock()
 
 			return nil
@@ -84,9 +91,10 @@ func (s *Service) Search(c *gin.Context) {
 		slog.Error(err.Error())
 	}
 
-	if len(results) == 1 {
-		c.IndentedJSON(http.StatusOK, results[0])
-	} else {
-		c.IndentedJSON(http.StatusOK, results)
-	}
+	c.IndentedJSON(http.StatusOK, test)
+	// if len(results) == 1 {
+	// 	c.IndentedJSON(http.StatusOK, results[0])
+	// } else {
+	// 	c.IndentedJSON(http.StatusOK, results)
+	// }
 }

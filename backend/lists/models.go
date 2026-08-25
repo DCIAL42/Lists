@@ -13,21 +13,33 @@ type ListItem struct {
 
 type List struct {
 	cmn.Model
-	UserID    string
-	Title     string     `json:"title"`
-	CreatedBy string     `json:"created_by"`
-	Items     []ListItem `gorm:"foreignKey:ListID" json:"items"`
+	UserID string
+	Title  string     `json:"title"`
+	Items  []ListItem `gorm:"foreignKey:ListID" json:"items"`
 }
 
-type ListResponse struct {
-	ID        uint            `json:"id,omitempty"`
-	Title     string          `json:"title"`
-	CreatedBy string          `json:"created_by"`
-	Items     []cmn.MediaItem `json:"items"`
-}
-
-type ListPreview struct {
+type ListMeta struct {
 	ID        uint   `json:"id,omitempty"`
 	Title     string `json:"title"`
 	CreatedBy string `json:"created_by"`
+	Cover     string `json:"cover"`
+}
+
+type ListResponse struct {
+	ListMeta
+	Items []cmn.MediaItem `json:"items"`
+}
+
+type ListsPreviewResponse struct {
+	Lists []ListMeta `json:"lists"`
+	Next  string     `json:"next,omitempty"`
+	Page  uint       `json:"page"`
+	Count uint       `json:"count"`
+}
+
+type ListsResponse struct {
+	Lists []ListResponse `json:"lists"`
+	Next  string         `json:"next,omitempty"`
+	Page  uint           `json:"page"`
+	Count uint           `json:"count"`
 }

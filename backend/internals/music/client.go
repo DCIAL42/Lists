@@ -35,10 +35,10 @@ func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
 	return cmn.MediaItem{
 		Type:       cmn.TypeAlbum,
 		ExternalID: r.ExternalID,
+		Cover:      cover,
 		Data: Album{
 			Title:  r.Title,
 			Artist: artist,
-			Cover:  cover,
 		},
 	}
 }

@@ -2,6 +2,7 @@ package tracking
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/DCIAL42/lists/cmn"
@@ -36,8 +37,18 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		result := s.DB.Unscoped().Where("external_id = ? AND user_id = ?", item.ExternalID, userID).First(&test)
 
 		if result.Error == nil {
-			s.DB.Unscoped().Where(test).Update("deleted_at", nil)
-			test.Status = item.Status
+			result := s.DB.Unscoped().Model(&test).Updates(map[string]any{
+				"deleted_at": nil,
+				"status":     item.Status,
+			})
+			if result.Error != nil {
+				c.IndentedJSON(http.StatusInternalServerError, result.Error.Error())
+				return
+			}
+			if result.RowsAffected == 0 {
+				c.IndentedJSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
 			c.IndentedJSON(http.StatusOK, test)
 			return
 		}
@@ -140,6 +151,14 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		mediaTypeStr := c.Query("type")
 
 		status := c.Query("status")
+		pageStr := c.DefaultQuery("page", "1")
+
+		page, err := strconv.Atoi(pageStr)
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid page"})
+			return
+		}
 
 		if !validStatus[status] {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
@@ -163,7 +182,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			mediaTypes,
 		}
 
-		list, err := s.getTrackingList(pat)
+		list, err := s.getTrackingList(pat, page)
 
 		if err != nil {
 			cmn.HandleError(c, err)
@@ -182,36 +201,5 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		}
 
 		c.IndentedJSON(http.StatusOK, items)
-	})
-
-	r.GET("/dev/:type/:status", func(c *gin.Context) {
-		mediaTypeStr := c.Param("type")
-
-		status := c.Param("status")
-
-		if !validStatus[status] {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
-			return
-		}
-
-		mediaTypes := make([]cmn.MediaType, 0)
-
-		for t := range strings.SplitSeq(mediaTypeStr, "|") {
-			mediaTypes = append(mediaTypes, cmn.MediaType(t))
-		}
-
-		pat := TrackingItemQuery{
-			Status: cmn.TrackingStatus(status),
-			Types:  mediaTypes,
-		}
-
-		list, err := s.getTrackingList(pat)
-
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-
-		c.IndentedJSON(http.StatusOK, list)
 	})
 }

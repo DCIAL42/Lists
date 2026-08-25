@@ -19,18 +19,22 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db
 	}
 }
 
-func (s *Service) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
-	result := s.DB.Where(req).First(&res)
+func (s *Service) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
+	var item cmn.TrackingItem
+	result := s.DB.Where(req).First(&item)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 		return
 	}
 
-	return
+	return cmn.TrackingResponse{
+		ID:     item.ID,
+		Status: item.Status,
+	}, nil
 }
 
-func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
+func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
 	result := s.DB.Create(&req)
 
 	if result.Error != nil {
@@ -38,12 +42,15 @@ func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem
 		return
 	}
 
-	res = req
+	res = cmn.TrackingResponse{
+		ID:     req.ID,
+		Status: req.Status,
+	}
 
 	return
 }
 
-func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem, err error) {
+func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
 	result := s.DB.Where("id = ? AND user_id = ?", req.ID, req.UserID).Updates(req)
 
 	if result.Error != nil {
@@ -56,13 +63,18 @@ func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingItem
 		return
 	}
 
-	s.DB.First(&res, req.ID)
+	var item cmn.TrackingItem
+	s.DB.First(&item, req.ID)
 
-	return
+	return cmn.TrackingResponse{
+		ID:     item.ID,
+		Status: item.Status,
+	}, nil
 }
 
-func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingItem, err error) {
-	result := s.DB.Clauses(clause.Returning{}).Where("id = ? AND user_id = ?", id, userID).Delete(&res)
+func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingResponse, err error) {
+	var item cmn.TrackingItem
+	result := s.DB.Clauses(clause.Returning{}).Where("id = ? AND user_id = ?", id, userID).Delete(&item)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
@@ -74,13 +86,22 @@ func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingIt
 		return
 	}
 
-	return
+	return cmn.TrackingResponse{
+		ID:     item.ID,
+		Status: item.Status,
+	}, nil
 }
 
-func (s *Service) getTrackingList(pat TrackingItemQuery) (res TrackingListResponse, err error) {
+func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res TrackingListResponse, err error) {
 	list := make([]cmn.TrackingItem, 0)
 
-	result := s.DB.Where("user_id = ? AND status = ? AND type IN ?", pat.UserID, pat.Status, pat.Types).Find(&list)
+	var count int64
+	result := s.DB.Model(&cmn.TrackingItem{}).Where(
+		"user_id = ? AND status = ? AND type IN ?",
+		pat.UserID,
+		pat.Status,
+		pat.Types,
+	).Count(&count).Limit(9).Offset(9 * (page - 1)).Find(&list)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
@@ -108,6 +129,7 @@ func (s *Service) getTrackingList(pat TrackingItemQuery) (res TrackingListRespon
 
 	res = TrackingListResponse{
 		Items: resolved,
+		Total: int(count),
 	}
 
 	return

@@ -6,6 +6,7 @@ import (
 
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/middleware"
+	"github.com/DCIAL42/lists/users"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,39 +52,21 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		}
 
 		next := cmn.NextPage(c.Request.URL)
-		c.IndentedJSON(http.StatusOK, gin.H{"lists": lists, "next": next})
-	})
+		count, err := s.getListCount(List{})
 
-	r.GET("/user/:id", func(c *gin.Context) {
-		// userID := c.MustGet("userID").(string)
-		id := c.Param("id")
-		format := c.DefaultQuery("fmt", "preview")
-
-		switch format {
-		case "preview":
-			lists, err := s.getListsPreviewByUser(id)
-
-			if err != nil {
-				cmn.HandleError(c, err)
-				return
-			}
-
-			c.IndentedJSON(http.StatusOK, lists)
-			return
-
-		case "full":
-			lists, err := s.getListsByUser(id)
-
-			if err != nil {
-				cmn.HandleError(c, err)
-				return
-			}
-
-			c.IndentedJSON(http.StatusOK, lists)
+		if err != nil {
+			cmn.HandleError(c, err)
 			return
 		}
 
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid fmt query"})
+		res := ListsResponse{
+			lists,
+			next,
+			page,
+			count,
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
 	})
 
 	protected.POST("/", func(c *gin.Context) {
@@ -119,5 +102,74 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 		}
 
 		s.deleteList(id, userID)
+	})
+}
+
+func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
+	protected := r.Group("/")
+	protected.Use(middleware.RequireUser())
+
+	r.GET("/lists", func(c *gin.Context) {
+		// userID := c.MustGet("userID").(string)
+		username := c.Param("username")
+		user, err := users.GetUserByUsername(username)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "user not found"})
+			return
+		}
+
+		format := c.DefaultQuery("fmt", "preview")
+		pageStr := c.DefaultQuery("page", "1")
+
+		val, err := strconv.ParseUint(pageStr, 10, 64)
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid page"})
+			return
+		}
+
+		page := uint(val)
+
+		next := cmn.NextPage(c.Request.URL)
+		count, err := s.getListCount(List{UserID: user.ID})
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+		switch format {
+		case "preview":
+			lists, err := s.getListsPreviewByUser(user.ID, page)
+
+			if err != nil {
+				cmn.HandleError(c, err)
+				return
+			}
+
+			c.IndentedJSON(http.StatusOK, ListsPreviewResponse{
+				lists,
+				next,
+				page,
+				count,
+			})
+			return
+
+		case "full":
+			lists, err := s.getListsByUser(user.ID, page)
+
+			if err != nil {
+				cmn.HandleError(c, err)
+				return
+			}
+
+			c.IndentedJSON(http.StatusOK, ListsResponse{
+				lists,
+				next,
+				page,
+				count,
+			})
+			return
+		}
+
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid fmt query"})
 	})
 }

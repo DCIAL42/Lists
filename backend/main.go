@@ -71,6 +71,7 @@ func main() {
 	listGroup := api.Group("/lists")
 	listService := lists.NewService(db, clients)
 	listService.SetupRoutes(listGroup)
+	listService.SetupUserRoutes(api.Group("/:username"))
 
 	trackingGroup := api.Group("/tracking")
 	trackingService := tracking.NewService(db, clients)

@@ -41,6 +41,7 @@ type MediaItem struct {
 	ExternalID string           `json:"external_id"`
 	Data       any              `json:"data"`
 	Tracking   TrackingResponse `json:"tracking,omitempty"`
+	Cover      string           `json:"cover"`
 }
 
 type Model struct {

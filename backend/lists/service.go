@@ -46,11 +46,19 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 		return
 	}
 
+	var cover string
+	if len(resolvedItems) > 0 {
+		cover = resolvedItems[0].Cover
+	}
+
 	return ListResponse{
-		ID:        list.ID,
-		Title:     list.Title,
-		CreatedBy: *userDetails.Username,
-		Items:     resolvedItems,
+		ListMeta: ListMeta{
+			ID:        list.ID,
+			Title:     list.Title,
+			CreatedBy: *userDetails.Username,
+			Cover:     cover,
+		},
+		Items: resolvedItems,
 	}, nil
 }
 
@@ -68,7 +76,7 @@ func (s *Service) createList(list List) (res ListResponse, err error) {
 func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
 	var list List
 
-	result := s.DB.Clauses(clause.Returning{}).Unscoped().Where("id = ? AND user_id = ?", id, userID).Delete(&list)
+	result := s.DB.Clauses(clause.Returning{}).Where("id = ? AND user_id = ?", id, userID).Delete(&list)
 
 	if result.Error != nil {
 		return ListResponse{}, result.Error
@@ -94,23 +102,35 @@ func (s *Service) getListById(id uint) (res ListResponse, err error) {
 	return s.toListResponse(list)
 }
 
-func (s *Service) getListsPreviewByUser(userID string) (res []ListPreview, err error) {
+func (s *Service) getListsPreviewByUser(userID string, page uint) (res []ListMeta, err error) {
 	lists := make([]List, 0)
 
-	result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	// result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	result := s.DB.Limit(int(s.PageSize)).Offset((int(page)-1)*int(s.PageSize)).Preload("Items").Where("user_id = ?", userID).Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
 		return
 	}
 
-	res = make([]ListPreview, 0, len(lists))
+	res = make([]ListMeta, 0, len(lists))
+
+	userDetails, err := users.GetUserDetails(userID)
 
 	for _, list := range lists {
-		listPreview := ListPreview{
+		cover := ""
+		if len(list.Items) > 0 {
+			first := list.Items[0]
+			resolved, err := s.ResolveItem(first.Type, first.ExternalID)
+			if err == nil {
+				cover = resolved.Cover
+			}
+		}
+		listPreview := ListMeta{
 			list.ID,
 			list.Title,
-			list.CreatedBy,
+			*userDetails.Username,
+			cover,
 		}
 
 		res = append(res, listPreview)
@@ -119,10 +139,11 @@ func (s *Service) getListsPreviewByUser(userID string) (res []ListPreview, err e
 	return
 }
 
-func (s *Service) getListsByUser(userID string) (res []ListResponse, err error) {
+func (s *Service) getListsByUser(userID string, page uint) (res []ListResponse, err error) {
 	lists := make([]List, 0)
 
-	result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	// result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	result := s.DB.Limit(int(s.PageSize)).Offset((int(page)-1)*int(s.PageSize)).Preload("Items").Where("user_id = ?", userID).Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
@@ -169,4 +190,12 @@ func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
 	}
 
 	return
+}
+func (s *Service) getListCount(pat List) (uint, error) {
+	var count int64
+	result := s.DB.Model(&List{}).Where(pat).Count(&count)
+	if result.Error != nil {
+		return 0, &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+	}
+	return uint(count), nil
 }
