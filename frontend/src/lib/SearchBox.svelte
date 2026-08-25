@@ -2,7 +2,6 @@
     import Input from "$lib/components/Input.svelte";
     import { title } from "$lib/utils";
     import type { MediaItem } from "$lib/types";
-    import { useClerkContext } from "svelte-clerk";
     import Select from "./components/Select.svelte";
 
     type SearchResponse = {
@@ -18,8 +17,6 @@
     let results: SearchResponse | null = $state(null);
     let timer: ReturnType<typeof setTimeout>;
 
-    const ctx = useClerkContext();
-
     const search = (url: string = "") => {
         const q = searchQuery;
 
@@ -29,19 +26,11 @@
                 return;
             }
 
-            const token = await ctx.session?.getToken();
-
             if (url === "") {
                 url = `/api/search?query=${q}&type=${resultType}`;
             }
 
-            const res = await fetch(url, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            const res = await fetch(url);
             if (!res.ok) throw new Error("Search failed");
             results = await res.json();
         }, 500);

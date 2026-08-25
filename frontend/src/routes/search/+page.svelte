@@ -1,23 +1,28 @@
 <script lang="ts">
-    import ListItemCard from "$lib/ListItemCard.svelte";
-    import SearchBox from "$lib/SearchBox.svelte";
-    import type { MediaItem } from "$lib/types";
+    import SearchBar from "$lib/SearchBar.svelte";
+    import type { MediaItem, MediaType } from "$lib/types";
 
-    let items: MediaItem[] = $state([]);
+    let {
+        data,
+    }: { data: { items: MediaItem[]; query: string; tab: MediaType } } =
+        $props();
+    let items = $state(data.items);
+    let query = $state(data.query);
+    let tab = $state(data.tab);
 </script>
 
-<SearchBox bind:items />
+<SearchBar bind:items bind:query bind:tab />
 
-<div class="results">
-    {#if items}
-        {#each items as item}
-            <ListItemCard {item} />
-        {/each}
-    {/if}
-</div>
+<!-- <div class="results"> -->
+<!--     {#if items} -->
+<!--         {#each items as item} -->
+<!--             <ListItemCard {item} /> -->
+<!--         {/each} -->
+<!--     {/if} -->
+<!-- </div> -->
 
-<style>
-    .results {
-        padding: 5px;
-    }
-</style>
+<!-- <style> -->
+<!--     .results { -->
+<!--         padding: 5px; -->
+<!--     } -->
+<!-- </style> -->

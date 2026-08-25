@@ -6,7 +6,6 @@
     import SearchResults from "$lib/SearchResults.svelte";
     import { isAlbum, isMovie, title } from "$lib/utils";
     import type { MediaItem } from "$lib/types";
-    import { useClerkContext } from "svelte-clerk";
 
     type SearchResponse = {
         next: string;
@@ -21,8 +20,6 @@
     let results: Promise<SearchResponse> | null = $state(null);
     let timer: ReturnType<typeof setTimeout>;
 
-    const ctx = useClerkContext();
-
     const search = (url: string = "") => {
         const q = searchQuery;
 
@@ -32,19 +29,11 @@
                 return;
             }
 
-            const token = await ctx.session?.getToken();
-
             if (url === "") {
                 url = `/api/search?query=${q}&type=${resultType}`;
             }
 
-            const res = await fetch(url, {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            const res = await fetch(url);
             if (!res.ok) throw new Error("Search failed");
             results = await res.json();
         }, 500);
@@ -108,12 +97,14 @@
                         {#if isAlbum(item)}
                             <AlbumCard
                                 album={item.data}
+                                cover={item.cover}
                                 add
                                 onclick={() => items.push(item)}
                             />
                         {:else if isMovie(item)}
                             <MovieCard
                                 movie={item.data}
+                                cover={item.cover}
                                 add
                                 onclick={() => {
                                     items.push(item);
