@@ -14,7 +14,7 @@
         label = "Label",
         value = $bindable(),
         variant = "text",
-        focused = $bindable<boolean>(),
+        focused = $bindable(),
         left_icon,
         ...props
     }: Props = $props();

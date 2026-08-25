@@ -1,27 +1,22 @@
 <script lang="ts">
     import Editable from "$lib/components/Editable.svelte";
-    import SearchForm from "$lib/SearchForm.svelte";
     import Button from "$lib/components/Button.svelte";
     import ArrowLeft from "$lib/icons/ArrowLeft.svelte";
     import { goto } from "$app/navigation";
     import List from "$lib/List.svelte";
-    import { useClerkContext } from "svelte-clerk";
+    import SearchBar from "$lib/SearchBar.svelte";
+    import type { MediaItem } from "$lib/types";
 
     let items = $state([]);
 
-    const ctx = useClerkContext();
-
     async function handleSave() {
         let list = $state.snapshot(listForm);
-
-        const token = await ctx.session?.getToken();
 
         const response = await fetch("/api/lists", {
             method: "POST",
             body: JSON.stringify(list),
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
             },
         });
 
@@ -35,14 +30,11 @@
     }
 
     let loading = $state(false);
-    let title = $state("");
-    let created_by = $state("");
     let showBackConfirm = $state(false);
 
-    let listForm = $derived({
-        title: title,
-        created_by: created_by,
-        items: items,
+    let listForm: { title: string; items: MediaItem[] } = $state({
+        title: "",
+        items: [],
     });
 </script>
 
@@ -53,18 +45,21 @@
         </Button>
         <div class="list-details">
             <Editable
-                bind:content={title}
+                bind:content={listForm.title}
                 placeholder="Enter title"
                 class="title"
             />
-            <Editable bind:content={created_by} placeholder="Created by" />
         </div>
         <Button onclick={handleSave}>Save</Button>
     </div>
     <div class="search-panel">
-        <SearchForm bind:items />
+        <SearchBar
+            bind:items
+            small
+            handleAdd={(item) => (listForm.items = [...listForm.items, item])}
+        />
     </div>
-    <List bind:items {loading} editing={true} />
+    <List bind:items={listForm.items} {loading} editing />
 </main>
 
 {#if showBackConfirm}
@@ -98,8 +93,8 @@
 
     .search-panel {
         padding: 5px;
-        width: 15%;
         height: 100%;
+        width: 15%;
         margin-inline: auto;
     }
 

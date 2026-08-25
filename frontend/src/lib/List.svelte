@@ -30,7 +30,7 @@
             items = sortItems(items, draggedItemIndex, targetItemIndex);
     }
 
-    function onRemoveClick(_: MouseEvent, i: number) {
+    function onRemoveClick(i: number) {
         items = items.toSpliced(i, 1);
     }
 
@@ -57,6 +57,7 @@
                         {editing}
                         dragging={dragIdx === index}
                         bind:loading
+                        numbered
                         {onRemoveClick}
                     />
                 </SortableList.Item>

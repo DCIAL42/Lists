@@ -58,6 +58,7 @@ nav {
     --primary: #000000;
     --primary-muted: #000000aa;
     --primary-foreground: #ffffff;
+    --primary-foreground-muted: #d1d1d1;
     --focused: #0060ffff;
     --focused-light: #0060ffaa;
 

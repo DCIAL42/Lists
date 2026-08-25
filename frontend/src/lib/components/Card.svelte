@@ -1,6 +1,7 @@
 <script lang="ts">
     import Button from "./Button.svelte";
     import Plus from "$lib/icons/Plus.svelte";
+    import type { HTMLAttributes } from "svelte/elements";
 
     const {
         src,
@@ -9,6 +10,7 @@
         subtitle,
         add = false,
         onclick,
+        ...rest
     }: {
         src?: string;
         alt?: string;
@@ -16,10 +18,10 @@
         subtitle?: string;
         add?: boolean;
         onclick?: () => void;
-    } = $props();
+    } & HTMLAttributes<HTMLDivElement> = $props();
 </script>
 
-<div class="card">
+<div class="card" {...rest}>
     <div class="card-left">
         {#if src}
             <img {src} class="cover" {alt} />

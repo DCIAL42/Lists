@@ -4,13 +4,19 @@
 
     const {
         movie,
+        cover,
         add = false,
         onclick,
-    }: { movie: Movie; add?: boolean; onclick?: () => void } = $props();
+    }: {
+        movie: Movie;
+        cover: string;
+        add?: boolean;
+        onclick?: () => void;
+    } = $props();
 </script>
 
 <Card
-    src={movie.cover}
+    src={cover}
     alt={`${movie.title} movie poster`}
     title={movie.title}
     {add}

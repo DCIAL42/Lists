@@ -6,6 +6,7 @@
     import Cross from "$lib/icons/Cross.svelte";
     import type {
         MediaItem,
+        TrackingItem,
         TrackingPayload,
         TrackingStatus,
     } from "$lib/types";
@@ -15,15 +16,22 @@
     import Pause from "./icons/Pause.svelte";
     import { useClerkContext } from "svelte-clerk";
     import { error } from "@sveltejs/kit";
+    import Plus from "./icons/Plus.svelte";
+    import type { HTMLAttributes } from "svelte/elements";
 
     let {
-        item,
+        item = $bindable(),
         index = 0,
         dragging = false,
         editing = false,
         loading = $bindable(false),
         numbered = false,
+        small = false,
+        add = false,
         onRemoveClick = () => {},
+        onAddClick = () => {},
+        onTrackingChange = () => {},
+        ...rest
     }: {
         item: MediaItem;
         index?: number;
@@ -31,15 +39,23 @@
         editing?: boolean;
         loading?: boolean;
         numbered?: boolean;
+        small?: boolean;
+        add?: boolean;
         onRemoveClick?: (i: number, e?: MouseEvent) => void;
-    } = $props();
+        onAddClick?: (item: MediaItem) => void;
+        onTrackingChange?: (from: TrackingStatus, to: TrackingStatus) => void;
+    } & HTMLAttributes<HTMLDivElement> = $props();
 
     const ctx = useClerkContext();
     const userId = $derived(ctx.auth.userId);
 
-    let tracking = $derived(item.tracking.status);
+    let tracking = $derived(item.tracking?.status);
 
     async function removeTracking() {
+        if (item.tracking === undefined) {
+            return;
+        }
+
         const res = await fetch(`/api/tracking/${item.tracking.id}`, {
             method: "DELETE",
         });
@@ -47,9 +63,16 @@
         if (!res.ok) {
             throw error(500, "failed to delete tracking item");
         }
+
+        const data: TrackingItem = await res.json();
+        item.tracking = data;
     }
 
     async function updateTracking(newStatus: TrackingStatus) {
+        if (item.tracking === undefined) {
+            return;
+        }
+
         const res = await fetch(`/api/tracking/${item.tracking.id}`, {
             method: "PATCH",
             body: JSON.stringify({
@@ -60,6 +83,9 @@
         if (!res.ok) {
             throw error(500, "failed to udpate tracking item");
         }
+
+        const data: TrackingItem = await res.json();
+        item.tracking = data;
     }
 
     async function newTracking(status: TrackingStatus) {
@@ -77,6 +103,9 @@
         if (!res.ok) {
             throw error(500, "failed to create tracking item");
         }
+
+        const data: TrackingItem = await res.json();
+        item.tracking = data;
     }
 
     function handleTrackingChange(status: TrackingStatus) {
@@ -84,18 +113,20 @@
 
         if (tracking === status) {
             removeTracking();
+            onTrackingChange(tracking, "none");
         } else if (tracking === undefined) {
             newTracking(status);
+            onTrackingChange("none", status);
         } else {
             updateTracking(status);
+            onTrackingChange(tracking, status);
         }
         tracking = tracking === status ? undefined : status;
-        onRemoveClick(index);
     }
 </script>
 
 {#if loading}
-    <div class="list-item">
+    <div class="list-item" {...rest}>
         {#if editing}
             <div class="grip" style="margin-inline: 6px;">
                 <Skeleton height={24} width={12} />
@@ -108,7 +139,7 @@
         </div>
     </div>
 {:else}
-    <div class="list-item" class:dragging>
+    <div class="list-item" class:dragging {...rest}>
         {#if editing}
             <div class="grip">
                 <SortableList.ItemHandle>
@@ -117,54 +148,61 @@
             </div>
         {/if}
         <img
-            src={item.data.cover || "https://placehold.co/250"}
+            src={item.cover || "https://placehold.co/250"}
             alt={"cover"}
             class="item-cover"
         />
-        <div class="list-text">
-            <h1 class="title">
-                {#if numbered}
-                    {index + 1}.
+        {#if add}
+            <Button variant="ghost" onclick={() => onAddClick(item)}
+                ><Plus /></Button
+            >
+        {/if}
+        {#if !small}
+            <div class="list-text">
+                <h1 class="title">
+                    {#if numbered}
+                        {index + 1}.
+                    {/if}
+                    {item.data.title}
+                </h1>
+                {#if isAlbum(item)}
+                    <p class="subtitle">{item.data.artist}</p>
                 {/if}
-                {item.data.title}
-            </h1>
-            {#if isAlbum(item)}
-                <p class="subtitle">{item.data.artist}</p>
-            {/if}
-        </div>
-        <div class="actions">
-            {#if editing}
-                <Button
-                    variant="ghost"
-                    style="color:red;"
-                    onclick={(e) => onRemoveClick(index, e)}
-                >
-                    <Cross />
-                </Button>
-            {:else}
-                <Button
-                    variant="ghost"
-                    selected={tracking === "backlog"}
-                    onclick={() => handleTrackingChange("backlog")}
-                >
-                    <Bookmark />
-                </Button>
-                <Button
-                    variant="ghost"
-                    selected={tracking === "paused"}
-                    onclick={() => handleTrackingChange("paused")}
-                >
-                    <Pause />
-                </Button>
-                <Button
-                    variant="ghost"
-                    selected={tracking === "done"}
-                    onclick={() => handleTrackingChange("done")}
-                >
-                    <Check />
-                </Button>
-            {/if}
-        </div>
+            </div>
+            <div class="actions">
+                {#if editing}
+                    <Button
+                        variant="ghost"
+                        style="color:red;"
+                        onclick={(e) => onRemoveClick(index, e)}
+                    >
+                        <Cross />
+                    </Button>
+                {:else}
+                    <Button
+                        variant="ghost"
+                        selected={tracking === "backlog"}
+                        onclick={() => handleTrackingChange("backlog")}
+                    >
+                        <Bookmark />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        selected={tracking === "paused"}
+                        onclick={() => handleTrackingChange("paused")}
+                    >
+                        <Pause />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        selected={tracking === "done"}
+                        onclick={() => handleTrackingChange("done")}
+                    >
+                        <Check />
+                    </Button>
+                {/if}
+            </div>
+        {/if}
     </div>
 {/if}
 

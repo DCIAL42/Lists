@@ -4,13 +4,19 @@
 
     const {
         album,
+        cover,
         add = false,
         onclick,
-    }: { album: Album; add?: boolean; onclick?: () => void } = $props();
+    }: {
+        album: Album;
+        cover: string;
+        add?: boolean;
+        onclick?: () => void;
+    } = $props();
 </script>
 
 <Card
-    src={album.cover}
+    src={cover}
     alt={`${album.title} by ${album.artist} album cover`}
     title={album.title}
     subtitle={album.artist}
