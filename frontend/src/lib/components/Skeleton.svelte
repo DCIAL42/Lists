@@ -1,15 +1,18 @@
 <script lang="ts">
+    import type { HTMLAttributes } from "svelte/elements";
+
     let {
         size,
         width,
         height,
         borderRadius,
+        ...rest
     }: {
         size?: number | string;
         width?: number | string;
         height?: number | string;
         borderRadius?: number | string;
-    } = $props();
+    } & HTMLAttributes<HTMLDivElement> = $props();
 
     const css = (v: number | string | undefined) =>
         typeof v === "number" ? `${v}px` : v;
@@ -20,6 +23,7 @@
     style:--width={css(width) || css(size)}
     style:--height={css(height) || css(size)}
     style:--border-radius={css(borderRadius) || "4px"}
+    {...rest}
 ></div>
 
 <style>

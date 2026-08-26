@@ -28,10 +28,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const GET: RequestHandler = async ({ url }) => {
     let page = url.searchParams.get("page")
 
-    let u = `http://localhost:8080/api/lists`
+    let u = `http://localhost:8080/api/lists?order=desc`
 
     if (page !== null) {
-        u += `?page=${page}`
+        u += `&page=${page}`
     }
 
     const res = await fetch(u)

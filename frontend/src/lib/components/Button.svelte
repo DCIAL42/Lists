@@ -62,6 +62,6 @@
     }
 
     .selected {
-        color: blue;
+        color: var(--focused);
     }
 </style>

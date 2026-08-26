@@ -2,7 +2,12 @@
     import { goto } from "$app/navigation";
     import { toggleMode, mode } from "mode-watcher";
     import type { MediaItem, MediaType } from "$lib/types";
-    import { Show, SignInButton, useClerkContext } from "svelte-clerk";
+    import {
+        Show,
+        SignInButton,
+        useClerkContext,
+        UserButton,
+    } from "svelte-clerk";
     import Link from "./components/Link.svelte";
     import Moon from "./icons/Moon.svelte";
     import Sun from "./icons/Sun.svelte";
@@ -45,7 +50,15 @@
             {/if}
         </Button>
         <Show when="signed-in">
-            <Link href={`/${username}`}>Profile</Link>
+            <UserButton>
+                <UserButton.MenuItems>
+                    <UserButton.Link label="profile" href={`/${username}`}>
+                        {#snippet labelIcon()}
+                            <span>👤</span>
+                        {/snippet}
+                    </UserButton.Link>
+                </UserButton.MenuItems>
+            </UserButton>
         </Show>
         <Show when="signed-out">
             <SignInButton />

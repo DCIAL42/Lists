@@ -173,7 +173,7 @@
                 {#if editing}
                     <Button
                         variant="ghost"
-                        style="color:red;"
+                        style="color:var(--warning);"
                         onclick={(e) => onRemoveClick(index, e)}
                     >
                         <Cross />
