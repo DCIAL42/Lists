@@ -22,7 +22,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func setupRouter() *gin.Engine {
 	godotenv.Load()
 
 	debug, ok := os.LookupEnv("DEBUG")
@@ -39,7 +39,10 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins: []string{
+			"http://localhost:5173",
+			"https://lists-teal-tau.vercel.app",
+		},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -83,6 +86,12 @@ func main() {
 	trackingGroup := api.Group("/tracking")
 	trackingService := tracking.NewService(db, clients)
 	trackingService.SetupRoutes(trackingGroup)
+
+	return r
+}
+
+func main() {
+	r := setupRouter()
 
 	r.Run(":8080")
 }
