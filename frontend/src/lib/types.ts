@@ -53,3 +53,8 @@ export interface TrackingPayload {
     status: TrackingStatus
     type: MediaType
 }
+
+export interface UserResponse {
+    id: string
+    username: string
+}
