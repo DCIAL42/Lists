@@ -1,97 +1,11 @@
 package main
 
 import (
-	"log/slog"
-	"net/http"
-	"os"
-	"strings"
-	"time"
-
-	"github.com/DCIAL42/lists/cmn"
-	"github.com/DCIAL42/lists/internals/movies"
-	"github.com/DCIAL42/lists/internals/music"
-	"github.com/DCIAL42/lists/internals/search"
-	"github.com/DCIAL42/lists/lists"
-	"github.com/DCIAL42/lists/middleware"
-	"github.com/DCIAL42/lists/tracking"
-	"github.com/DCIAL42/lists/users"
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/location/v2"
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"github.com/DCIAL42/lists/app"
 )
 
-func setupRouter() *gin.Engine {
-	godotenv.Load()
-
-	debug, ok := os.LookupEnv("DEBUG")
-
-	if ok && strings.ToUpper(debug) == "TRUE" {
-		slog.Info("Entering debug mode")
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-	}
-
-	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	r := gin.Default()
-
-	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{
-			"http://localhost:5173",
-			"https://lists-frontend-lovat.vercel.app",
-		},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
-
-	r.Use(location.Default())
-
-	r.Use(middleware.WrapClerkMiddleware(clerkhttp.WithHeaderAuthorization()))
-
-	api := r.Group("/api")
-
-	clients := map[cmn.MediaType]cmn.Client{
-		cmn.TypeAlbum: music.NewMusicClient(httpClient),
-		cmn.TypeMovie: movies.NewMovieClient(httpClient),
-	}
-
-	db, err := cmn.InitDB(
-		&lists.List{},
-		&lists.ListItem{},
-		&cmn.TrackingItem{},
-		&users.Following{},
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	userGroup := api.Group("/users")
-	userService := users.NewUserService(db)
-	userService.SetupRoutes(userGroup)
-	userService.SetupUserRoutes(api.Group("/:username"))
-
-	searchGroup := api.Group("/search")
-	searchService := search.NewSearchService(clients, db)
-	searchService.SetupRoutes(searchGroup)
-
-	listGroup := api.Group("/lists")
-	listService := lists.NewService(db, clients)
-	listService.SetupRoutes(listGroup)
-	listService.SetupUserRoutes(api.Group("/:username"))
-
-	trackingGroup := api.Group("/tracking")
-	trackingService := tracking.NewService(db, clients)
-	trackingService.SetupRoutes(trackingGroup)
-
-	return r
-}
-
 func main() {
-	r := setupRouter()
+	r := app.SetupRouter()
 
 	r.Run(":8080")
 }
