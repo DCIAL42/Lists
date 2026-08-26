@@ -40,6 +40,7 @@ export const GET: RequestHandler = async ({ url }) => {
     const res = await fetch(u)
 
     const data = await res.json()
+    console.log(res, data)
 
     return json(data)
 }
