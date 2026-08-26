@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/DCIAL42/lists/app"
 )
@@ -13,5 +14,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "38247"
+	}
+	if err := r.Run(port); err != nil {
+		log.Fatal(err)
+	}
 }
