@@ -1,3 +1,4 @@
+import { env } from "$env/dynamic/private";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -9,7 +10,8 @@ export const load: PageServerLoad = async ({ url }) => {
         }
     }
 
-    const res = await fetch(`http://localhost:8080/api/search?query=${query}&type=${tab}`)
+    const backendURL = env.BACKEND_URL
+    const res = await fetch(`${backendURL}/search?query=${query}&type=${tab}`)
 
     if (!res.ok) {
         throw new Error(`Failed to fetch tracking items`)

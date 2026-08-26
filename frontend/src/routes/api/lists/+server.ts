@@ -1,6 +1,7 @@
 import type { RequestHandler } from "./$types";
 import type { List, ListPayload } from "$lib/types";
 import { json } from "@sveltejs/kit";
+import { env } from "$env/dynamic/private";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     const token = await locals.auth().getToken()
@@ -11,7 +12,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         items: list.items.map(item => ({ ...item, external_id: String(item.external_id) }))
     }
 
-    const res = await fetch('http://localhost:8080/api/lists', {
+    const backendURL = env.BACKEND_URL
+    const res = await fetch(`${backendURL}/lists`, {
         method: 'POST',
         body: JSON.stringify(body),
         headers: {
@@ -28,7 +30,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const GET: RequestHandler = async ({ url }) => {
     let page = url.searchParams.get("page")
 
-    let u = `http://localhost:8080/api/lists?order=desc`
+    const backendURL = env.BACKEND_URL
+    let u = `${backendURL}/lists?order=desc`
 
     if (page !== null) {
         u += `&page=${page}`

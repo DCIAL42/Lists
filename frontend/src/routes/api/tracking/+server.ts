@@ -1,3 +1,4 @@
+import { env } from "$env/dynamic/private";
 import type { TrackingPayload } from "$lib/types";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
@@ -7,7 +8,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
     const status = url.searchParams.get("status")
     const page = url.searchParams.get("page")
 
-    let targetUrl = `http://localhost:8080/api/tracking?type=${mediaType}&status=${status}`
+    const backendURL = env.BACKEND_URL
+    let targetUrl = `${backendURL}/tracking?type=${mediaType}&status=${status}`
     if (page !== null) {
         targetUrl += `&page=${page}`
     }
@@ -27,7 +29,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     const token = await locals.auth().getToken();
-    const url = `http://localhost:8080/api/tracking`
+    const backendURL = env.BACKEND_URL
+    const url = `${backendURL}/tracking`
 
     const item: TrackingPayload = await request.json()
 

@@ -1,11 +1,13 @@
 import { error } from "@sveltejs/kit"
 import type { PageServerLoad } from "./$types"
 import type { List } from "$lib/types"
+import { env } from "$env/dynamic/private"
 
 export const load: PageServerLoad = async ({ params, locals }) => {
     const token = await locals.auth().getToken()
 
-    const res = await fetch(`http://localhost:8080/api/lists/${params.id}`, {
+    const backendURL = env.BACKEND_URL
+    const res = await fetch(`${backendURL}/lists/${params.id}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`

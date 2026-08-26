@@ -1,5 +1,6 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
+import { env } from "$env/dynamic/private";
 
 export const GET: RequestHandler = async ({ url, locals }) => {
     const token = await locals.auth().getToken()
@@ -14,7 +15,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         )
     }
 
-    let u = `http://localhost:8080/api/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`
+    const backendURL = env.BACKEND_URL
+    let u = `${backendURL}/search?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`
 
     if (page !== null) {
         u += `&page=${page}`

@@ -1,8 +1,10 @@
+import { env } from "$env/dynamic/private";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
     const token = await locals.auth().getToken();
-    const url = `http://localhost:8080/api/lists/${params.id}`
+    const backendURL = env.BACKEND_URL
+    const url = `${backendURL}/lists/${params.id}`
 
     const res = await fetch(url, {
         method: 'DELETE',
@@ -19,7 +21,8 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 // export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 //     const token = await locals.auth().getToken();
-//     const url = `http://localhost:8080/api/tracking/${params.id}`
+//     const backendURL = env.BACKEND_URL
+//     const url = `${backendURL}/tracking/${params.id}`
 //
 //     const payload = await request.json()
 //
