@@ -41,7 +41,7 @@ func setupRouter() *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:5173",
-			"https://lists-teal-tau.vercel.app",
+			"https://lists-frontend-lovat.vercel.app",
 		},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
