@@ -12,9 +12,10 @@ import (
 
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	protected := r.Group("/")
-	protected.Use(middleware.RequireUser())
+	protected.Use(middleware.MaybeUser())
 
-	r.GET("/:id", func(c *gin.Context) {
+	protected.GET("/:id", func(c *gin.Context) {
+		userID := c.GetString("userID")
 		id, err := cmn.ParseParam[uint](c, "id")
 
 		if err != nil {
@@ -22,7 +23,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		list, err := s.getListById(id)
+		list, err := s.getListById(id, userID)
 
 		if err != nil {
 			cmn.HandleError(c, err)
@@ -33,6 +34,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	})
 
 	r.GET("/", func(c *gin.Context) {
+		order := c.DefaultQuery("order", "asc")
 		pageStr := c.DefaultQuery("page", "1")
 
 		val, err := strconv.ParseUint(pageStr, 10, 64)
@@ -44,27 +46,19 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		page := uint(val)
 
-		lists, err := s.getAllLists(page)
+		reverse := true
+		if order == "asc" {
+			reverse = false
+		}
+
+		res, err := s.getAllLists(page, reverse)
 
 		if err != nil {
 			cmn.HandleError(c, err)
 			return
 		}
 
-		next := cmn.NextPage(c.Request.URL)
-		count, err := s.getListCount(List{})
-
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-
-		res := ListsResponse{
-			lists,
-			next,
-			page,
-			count,
-		}
+		res.Next = cmn.NextPage(c.Request.URL)
 
 		c.IndentedJSON(http.StatusOK, res)
 	})
@@ -101,7 +95,17 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		s.deleteList(id, userID)
+		res, err := s.deleteList(id, userID)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
+	})
+
+	protected.PATCH("/:id", func(c *gin.Context) {
 	})
 }
 
@@ -131,42 +135,29 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 		page := uint(val)
 
 		next := cmn.NextPage(c.Request.URL)
-		count, err := s.getListCount(List{UserID: user.ID})
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
 		switch format {
 		case "preview":
-			lists, err := s.getListsPreviewByUser(user.ID, page)
+			res, err := s.getListsPreviewByUser(user.ID, page)
+			res.Next = next
 
 			if err != nil {
 				cmn.HandleError(c, err)
 				return
 			}
 
-			c.IndentedJSON(http.StatusOK, ListsPreviewResponse{
-				lists,
-				next,
-				page,
-				count,
-			})
+			c.IndentedJSON(http.StatusOK, res)
 			return
 
 		case "full":
-			lists, err := s.getListsByUser(user.ID, page)
+			res, err := s.getListsByUser(user.ID, page)
+			res.Next = next
 
 			if err != nil {
 				cmn.HandleError(c, err)
 				return
 			}
 
-			c.IndentedJSON(http.StatusOK, ListsResponse{
-				lists,
-				next,
-				page,
-				count,
-			})
+			c.IndentedJSON(http.StatusOK, res)
 			return
 		}
 

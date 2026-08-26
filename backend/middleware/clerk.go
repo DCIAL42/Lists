@@ -35,6 +35,21 @@ func WrapClerkMiddleware(clerkMiddleWare func(http.Handler) http.Handler) gin.Ha
 	}
 }
 
+func MaybeUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())
+
+		if !ok {
+			return
+		}
+
+		c.Set("userID", claims.Subject)
+		c.Set("claims", claims)
+
+		c.Next()
+	}
+}
+
 func RequireUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())

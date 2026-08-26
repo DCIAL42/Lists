@@ -14,6 +14,7 @@ import (
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
 	"github.com/DCIAL42/lists/tracking"
+	"github.com/DCIAL42/lists/users"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/location/v2"
@@ -58,11 +59,17 @@ func main() {
 		&lists.List{},
 		&lists.ListItem{},
 		&cmn.TrackingItem{},
+		&users.Following{},
 	)
 
 	if err != nil {
 		panic(err)
 	}
+
+	userGroup := api.Group("/users")
+	userService := users.NewUserService(db)
+	userService.SetupRoutes(userGroup)
+	userService.SetupUserRoutes(api.Group("/:username"))
 
 	searchGroup := api.Group("/search")
 	searchService := search.NewSearchService(clients, db)

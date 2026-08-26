@@ -19,21 +19,6 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db
 	}
 }
 
-func (s *Service) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
-	var item cmn.TrackingItem
-	result := s.DB.Where(req).First(&item)
-
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
-		return
-	}
-
-	return cmn.TrackingResponse{
-		ID:     item.ID,
-		Status: item.Status,
-	}, nil
-}
-
 func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
 	result := s.DB.Create(&req)
 
@@ -129,7 +114,7 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 
 	res = TrackingListResponse{
 		Items: resolved,
-		Total: int(count),
+		Count: int(count),
 	}
 
 	return

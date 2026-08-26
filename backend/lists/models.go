@@ -16,6 +16,7 @@ type List struct {
 	UserID string
 	Title  string     `json:"title"`
 	Items  []ListItem `gorm:"foreignKey:ListID" json:"items"`
+	Cover  string     `json:"cover"`
 }
 
 type ListMeta struct {

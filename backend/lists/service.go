@@ -24,7 +24,7 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db
 	}
 }
 
-func (s *Service) toListResponse(list List) (res ListResponse, err error) {
+func (s *Service) toListResponse(list List, userID string) (res ListResponse, err error) {
 	resolvedItems := make([]cmn.MediaItem, 0, len(list.Items))
 
 	for _, item := range list.Items {
@@ -34,6 +34,10 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 		if err != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 			return
+		}
+
+		if userID != "" {
+			resolvedItem.Tracking, err = s.GetTrackingItem(cmn.TrackingItem{UserID: userID, ExternalID: resolvedItem.ExternalID})
 		}
 
 		resolvedItems = append(resolvedItems, resolvedItem)
@@ -46,23 +50,20 @@ func (s *Service) toListResponse(list List) (res ListResponse, err error) {
 		return
 	}
 
-	var cover string
-	if len(resolvedItems) > 0 {
-		cover = resolvedItems[0].Cover
-	}
-
 	return ListResponse{
 		ListMeta: ListMeta{
 			ID:        list.ID,
 			Title:     list.Title,
 			CreatedBy: *userDetails.Username,
-			Cover:     cover,
+			Cover:     list.Cover,
 		},
 		Items: resolvedItems,
 	}, nil
 }
 
 func (s *Service) createList(list List) (res ListResponse, err error) {
+	first, err := s.ResolveItem(list.Items[0].Type, list.Items[0].ExternalID)
+	list.Cover = first.Cover
 	result := s.DB.Create(&list)
 
 	if result.Error != nil {
@@ -70,7 +71,7 @@ func (s *Service) createList(list List) (res ListResponse, err error) {
 		return
 	}
 
-	return s.toListResponse(list)
+	return s.toListResponse(list, list.UserID)
 }
 
 func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
@@ -86,10 +87,29 @@ func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
 		return ListResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
 	}
 
-	return s.toListResponse(list)
+	return s.toListResponse(list, list.UserID)
 }
 
-func (s *Service) getListById(id uint) (res ListResponse, err error) {
+func (s *Service) updateList(req List) (res ListResponse, err error) {
+	result := s.DB.Where("id = ? AND user_id = ?", req.ID, req.UserID).Updates(req)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
+		return
+	}
+
+	var list List
+	s.DB.First(&list, req.ID)
+
+	return s.toListResponse(list, list.UserID)
+}
+
+func (s *Service) getListById(id uint, userID string) (res ListResponse, err error) {
 	var list List
 
 	result := s.DB.Preload("Items").First(&list, id)
@@ -99,103 +119,101 @@ func (s *Service) getListById(id uint) (res ListResponse, err error) {
 		return
 	}
 
-	return s.toListResponse(list)
+	return s.toListResponse(list, userID)
 }
 
-func (s *Service) getListsPreviewByUser(userID string, page uint) (res []ListMeta, err error) {
+func (s *Service) getListsPreviewByUser(userID string, page uint) (res ListsPreviewResponse, err error) {
+	res.Page = page
 	lists := make([]List, 0)
 
-	// result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
-	result := s.DB.Limit(int(s.PageSize)).Offset((int(page)-1)*int(s.PageSize)).Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	var result *gorm.DB
+	result, res.Count = s.GetPage(page, "id desc", &List{})
+	result = result.Where("user_id = ?", userID).Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
 		return
 	}
 
-	res = make([]ListMeta, 0, len(lists))
+	res.Lists = make([]ListMeta, 0, len(lists))
 
 	userDetails, err := users.GetUserDetails(userID)
 
 	for _, list := range lists {
-		cover := ""
-		if len(list.Items) > 0 {
-			first := list.Items[0]
-			resolved, err := s.ResolveItem(first.Type, first.ExternalID)
-			if err == nil {
-				cover = resolved.Cover
-			}
-		}
 		listPreview := ListMeta{
 			list.ID,
 			list.Title,
 			*userDetails.Username,
-			cover,
+			list.Cover,
 		}
 
-		res = append(res, listPreview)
+		res.Lists = append(res.Lists, listPreview)
 	}
 
 	return
 }
 
-func (s *Service) getListsByUser(userID string, page uint) (res []ListResponse, err error) {
+func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, err error) {
+	res.Page = page
 	lists := make([]List, 0)
 
-	// result := s.DB.Preload("Items").Where("user_id = ?", userID).Find(&lists)
-	result := s.DB.Limit(int(s.PageSize)).Offset((int(page)-1)*int(s.PageSize)).Preload("Items").Where("user_id = ?", userID).Find(&lists)
+	var result *gorm.DB
+	result, res.Count = s.GetPage(page, "id desc", &List{})
+	result = result.Where("user_id = ?", userID).Preload("Items").Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
 		return
 	}
 
-	res = make([]ListResponse, 0, len(lists))
+	res.Lists = make([]ListResponse, 0, len(lists))
 
 	for _, list := range lists {
-		listResponse, err := s.toListResponse(list)
+		listResponse, err := s.toListResponse(list, list.UserID)
 
 		if err != nil {
 			slog.Error("Failed converting to list response", "error:", err.Error())
 			continue
 		}
 
-		res = append(res, listResponse)
+		res.Lists = append(res.Lists, listResponse)
 	}
 
 	return
 }
 
-func (s *Service) getAllLists(page uint) (res []ListResponse, err error) {
+func (s *Service) getAllLists(page uint, reverse bool) (res ListsPreviewResponse, err error) {
+	res.Page = page
 	lists := make([]List, 0)
 
-	result := s.DB.Limit(int(s.PageSize)).Offset((int(page) - 1) * int(s.PageSize)).Preload("Items").Find(&lists)
+	order := "id asc"
+	if reverse {
+		order = "id desc"
+	}
+
+	var result *gorm.DB
+	result, res.Count = s.GetPage(page, order, &List{})
+	result = result.Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 		return
 	}
 
-	res = make([]ListResponse, 0, len(lists))
+	res.Lists = make([]ListMeta, 0, len(lists))
 
 	for _, list := range lists {
-		listResponse, err := s.toListResponse(list)
-
+		userDetails, err := users.GetUserDetails(list.UserID)
 		if err != nil {
-			slog.Error("Failed converting to list response", "error:", err.Error())
-			continue
+			return ListsPreviewResponse{}, err
 		}
-
-		res = append(res, listResponse)
+		res.Lists = append(res.Lists, ListMeta{
+			ID:        list.ID,
+			Title:     list.Title,
+			CreatedBy: *userDetails.Username,
+			Cover:     list.Cover,
+		})
 	}
 
 	return
-}
-func (s *Service) getListCount(pat List) (uint, error) {
-	var count int64
-	result := s.DB.Model(&List{}).Where(pat).Count(&count)
-	if result.Error != nil {
-		return 0, &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
-	}
-	return uint(count), nil
 }

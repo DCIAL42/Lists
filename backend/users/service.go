@@ -44,3 +44,32 @@ func GetUserByUsername(username string) (*clerk.User, error) {
 
 	return nil, fmt.Errorf("user not found")
 }
+
+func (s *Service) getAllUsers() ([]UserResponse, error) {
+	clerkSecret, ok := os.LookupEnv("CLERK_SECRET_KEY")
+
+	if !ok {
+		panic("clerk secret key not found")
+	}
+
+	clerk.SetKey(clerkSecret)
+
+	userList, err := user.List(context.Background(), &user.ListParams{})
+	res := make([]UserResponse, 0, userList.TotalCount)
+	for _, u := range userList.Users {
+		res = append(res, UserResponse{u.ID, *u.Username})
+	}
+	return res, err
+}
+
+func (s *Service) newFollowing(follower, followed string) (Following, error) {
+	res := Following{Follower: follower, Followed: followed}
+
+	return res, s.DB.Create(&res).Error
+}
+
+func (s *Service) getFollowing(id string) (res []Following, err error) {
+	res = make([]Following, 0)
+	result := s.DB.Where("followed = ?", id).Find(&res)
+	return res, result.Error
+}

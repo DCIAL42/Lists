@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/DCIAL42/lists/cmn"
 	"gorm.io/gorm"
@@ -47,4 +48,30 @@ func NewDBService(db *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*
 		DB:            db,
 		Clients:       clients,
 	}
+}
+
+func (db *DBService) GetPage(page uint, order string, dst any) (*gorm.DB, uint) {
+	var count int64
+	result := db.DB.
+		Model(dst).
+		Order(order).
+		Count(&count).
+		Offset((int(page) - 1) * int(db.PageSize)).
+		Limit(int(db.PageSize))
+	return result, uint(count)
+}
+
+func (db *DBService) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
+	var item cmn.TrackingItem
+	result := db.DB.Where(req).First(&item)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
+	}
+
+	return cmn.TrackingResponse{
+		ID:     item.ID,
+		Status: item.Status,
+	}, nil
 }
