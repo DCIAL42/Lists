@@ -18,7 +18,7 @@ func main() {
 	if port == "" {
 		port = "38247"
 	}
-	if err := r.Run(port); err != nil {
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal(err)
 	}
 }
