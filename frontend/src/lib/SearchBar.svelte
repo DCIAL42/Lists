@@ -1,25 +1,26 @@
 <script lang="ts">
     import Input from "$lib/components/Input.svelte";
-    import Tabs from "$lib/components/Tabs.svelte";
     import Search from "$lib/icons/Search.svelte";
-    import ListItemCard from "$lib/ListItemCard.svelte";
     import type { MediaItem, MediaType, SearchResponse } from "$lib/types";
     import type { HTMLAttributes } from "svelte/elements";
+    import SearchResults from "./SearchResults.svelte";
 
     let {
-        items = $bindable(),
+        items = $bindable([]),
         tab = $bindable("movie"),
         query = $bindable(""),
         small = false,
         add = false,
+        floating = true,
         handleAdd = () => {},
         ...rest
     }: {
-        items: MediaItem[];
+        items?: MediaItem[];
         tab?: MediaType;
         query?: string;
         small?: boolean;
         add?: boolean;
+        floating?: boolean;
         handleAdd?: (item: MediaItem) => void;
     } & HTMLAttributes<HTMLInputElement> = $props();
 
@@ -73,19 +74,8 @@
             <Search />
         {/snippet}
     </Input>
-    {#if query !== "" && focused}
-        <div class="results" class:small>
-            <Tabs tabs={["movie", "album"]} bind:selected={tab} />
-            {#each items as item}
-                <ListItemCard
-                    {item}
-                    {small}
-                    add
-                    onAddClick={handleAdd}
-                    onmousedown={(e) => e.preventDefault()}
-                />
-            {/each}
-        </div>
+    {#if query !== "" && (focused || !floating)}
+        <SearchResults bind:items {small} {add} bind:tab {handleAdd} />
     {/if}
 </div>
 
@@ -93,23 +83,5 @@
     .outer {
         position: relative;
         width: 100%;
-    }
-
-    .small {
-        overflow: auto;
-        height: 50vh;
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .results {
-        display: flex;
-        flex-direction: column;
-        border: 1px solid var(--border);
-        padding: 5px;
-        margin-top: 10px;
-        background-color: var(--background);
-        z-index: 9999;
     }
 </style>

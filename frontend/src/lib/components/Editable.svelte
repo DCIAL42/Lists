@@ -7,7 +7,6 @@
         ...rest
     }: {
         content?: string;
-        className?: string;
     } & HTMLAttributes<HTMLDivElement> = $props();
 
     function metaEditKeyDown(e: KeyboardEvent) {
@@ -20,6 +19,7 @@
 
 <div
     class="editable-field {className}"
+    class:empty={!content}
     contenteditable
     bind:textContent={content}
     onkeydown={metaEditKeyDown}
@@ -31,15 +31,16 @@
 <style>
     .editable-field {
         margin: 0;
+        cursor: text;
     }
 
-    .editable-field[placeholder]:empty::before {
+    .editable-field.empty[placeholder]::before {
         content: attr(placeholder);
-        color: #00000044;
+        color: var(--primary);
         font-style: italic;
     }
 
-    .editable-field[placeholder]:empty:focus::before {
+    .editable-field.empty[placeholder]:focus::before {
         content: "";
     }
 </style>

@@ -8,9 +8,23 @@
     import type { MediaItem } from "$lib/types";
 
     let items = $state([]);
+    let errors = $state({
+        title: "",
+        items: "",
+    });
 
     async function handleSave() {
         let list = $state.snapshot(listForm);
+        let err = false;
+        if (list.title === "") {
+            errors.title = "Empty title";
+            err = true;
+        }
+        if (list.items.length === 0) {
+            errors.items = "No items";
+            err = true;
+        }
+        if (err) return;
 
         const response = await fetch("/api/lists", {
             method: "POST",
@@ -21,7 +35,8 @@
         });
 
         if (!response.ok) {
-            throw new Error("Unable to save list");
+            const data: { error: string } = await response.json();
+            throw new Error(data.error);
         }
 
         const data = await response.json();
@@ -36,6 +51,15 @@
         title: "",
         items: [],
     });
+
+    $effect(() => {
+        if (listForm.title !== "") {
+            errors.title = "";
+        }
+        if (listForm.items.length !== 0) {
+            errors.items = "";
+        }
+    });
 </script>
 
 <main>
@@ -44,6 +68,11 @@
             <ArrowLeft />
         </Button>
         <div class="list-details">
+            {#if errors.title}
+                <p class="error-text">
+                    {errors.title}
+                </p>
+            {/if}
             <Editable
                 bind:content={listForm.title}
                 placeholder="Enter title"
@@ -52,11 +81,18 @@
         </div>
         <Button onclick={handleSave}>Save</Button>
     </div>
+    {#if errors.items}
+        <p class="error-text">
+            {errors.items}
+        </p>
+    {/if}
     <div class="search-panel">
         <SearchBar
             bind:items
             small
-            handleAdd={(item) => (listForm.items = [...listForm.items, item])}
+            floating
+            add
+            handleAdd={(item) => listForm.items.push(item)}
         />
     </div>
     <List bind:items={listForm.items} {loading} editing />
@@ -114,5 +150,10 @@
         background-color: var(--background);
         padding: 20px;
         z-index: 1;
+    }
+
+    .error-text {
+        color: var(--warning);
+        margin-inline: auto;
     }
 </style>

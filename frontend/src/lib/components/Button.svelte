@@ -4,17 +4,19 @@
 
     let {
         variant = "primary",
+        text = "default",
         selected = false,
         children,
         ...props
     }: {
         variant?: "primary" | "icon" | "ghost" | "warning";
+        text?: "default" | "dark" | "light";
         selected?: boolean;
         children?: Snippet<[]>;
     } & SvelteHTMLElements["button"] = $props();
 </script>
 
-<button type="button" {...props} class={variant} class:selected>
+<button type="button" {...props} class="{variant} {text}" class:selected>
     {@render children?.()}
 </button>
 
@@ -23,12 +25,20 @@
         text-decoration: none;
         color: inherit;
         background-color: var(--primary);
-        color: var(--primary-foreground);
         padding: 8px;
         border: none;
         /* border: 1px solid var(--border); */
         transition: background-color 0.2s ease;
         cursor: pointer;
+    }
+
+    .default,
+    .light {
+        color: var(--primary-foreground);
+    }
+
+    .dark {
+        color: var(--primary);
     }
 
     .primary,
@@ -43,8 +53,11 @@
 
     .ghost {
         background-color: transparent;
-        color: var(--primary);
         border: none;
+    }
+
+    .ghost.default {
+        color: var(--primary);
     }
 
     .ghost:hover {
@@ -62,6 +75,6 @@
     }
 
     .selected {
-        color: var(--focused);
+        color: var(--focused) !important;
     }
 </style>

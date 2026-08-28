@@ -23,7 +23,7 @@
                     if (selected.includes(tab)) {
                         selected = selected.filter((e) => e !== tab);
                     } else {
-                        selected.push(tab);
+                        selected = [...selected, tab];
                     }
                 } else {
                     selected = tab;

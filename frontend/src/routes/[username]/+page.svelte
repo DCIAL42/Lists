@@ -4,41 +4,17 @@
     import Tabs from "$lib/components/Tabs.svelte";
     import ListItemCard from "$lib/ListItemCard.svelte";
     import ListPreview from "$lib/ListPreview.svelte";
-    import type {
-        MediaType,
-        TrackingStatus,
-        MediaItem,
-        ListMeta,
-        UserResponse,
-    } from "$lib/types.js";
+    import type { MediaType, TrackingStatus, MediaItem } from "$lib/types.js";
     import { untrack } from "svelte";
     import { page } from "$app/state";
+    import Profile from "$lib/Profile.svelte";
+    import type { PageData } from "./$types";
 
-    interface ListsPreviewData {
-        lists: ListMeta[];
-        next: string;
-        page: number;
-        count: number;
-    }
-
-    interface TrackingListData {
-        items: MediaItem[];
-        count: number;
-    }
-
-    let {
-        data = $bindable(),
-    }: {
-        data: {
-            trackingData?: TrackingListData;
-            listsData: ListsPreviewData;
-            userData: UserResponse;
-        };
-    } = $props();
+    let { data = $bindable() }: { data: PageData } = $props();
 
     let trackingData = $state.raw(data.trackingData);
     let listsData = $state.raw(data.listsData);
-    let tab: "lists" | "tracking" = $state("tracking");
+    let tab: "profile" | "lists" | "tracking" = $state("profile");
     let trackingTab: TrackingStatus = $state("backlog");
     let mediaTypes: MediaType[] = $state(["album", "movie", "game"]);
     let toastData: { show: boolean; message: string } = $state({
@@ -55,9 +31,8 @@
             `/api/tracking?type=${mediaTypes.join("|")}&status=${trackingTab}`,
         );
 
-        const body: TrackingListData = await res.json();
+        trackingData = await res.json();
 
-        trackingData = body;
         loading = false;
     }
 
@@ -92,7 +67,7 @@
     }
 
     $effect(() => {
-        void trackingTab;
+        void trackingTab, mediaTypes;
         if (tab === "tracking") {
             untrack(getTrackingItems);
         }
@@ -105,7 +80,7 @@
     </div>
     <hr style="width: 100%;" />
     {#if trackingData !== undefined}
-        <Tabs tabs={["tracking", "lists"]} bind:selected={tab} />
+        <Tabs tabs={["profile", "lists", "tracking"]} bind:selected={tab} />
 
         {#if tab === "tracking"}
             <Tabs
@@ -119,10 +94,18 @@
             />
         {/if}
 
-        {#if tab === "tracking"}
+        {#if tab === "profile"}
+            <Profile {data} />
+        {:else if tab === "lists"}
+            <div class="lists">
+                {#each listsData.lists as list}
+                    <ListPreview {list} />
+                {/each}
+            </div>
+        {:else if tab === "tracking"}
             <div class="items">
                 {#each trackingData.items as item, index}
-                    <ListItemCard {item} {index} {onTrackingChange} />
+                    <ListItemCard {item} {index} small {onTrackingChange} />
                 {/each}
                 {#if loading}
                     {#each Array(9) as _}
@@ -133,12 +116,6 @@
             {#if trackingData.count > trackingData.items.length}
                 <Button onclick={getMoreTrackingItems}>more</Button>
             {/if}
-        {:else if tab === "lists"}
-            <div class="lists">
-                {#each listsData.lists as list}
-                    <ListPreview {list} />
-                {/each}
-            </div>
         {/if}
     {:else}
         <div class="lists">
@@ -173,12 +150,15 @@
         flex-direction: column;
         gap: 5px;
         padding: 5px;
+        width: 75vw;
+        margin-inline: auto;
     }
 
     .items {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(5, 1fr);
         gap: 5px;
+        align-items: center;
     }
 
     .lists {

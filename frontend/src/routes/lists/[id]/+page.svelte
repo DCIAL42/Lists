@@ -7,10 +7,20 @@
     import List from "$lib/List.svelte";
     import { useClerkContext } from "svelte-clerk";
     import type { PageData } from "./$types";
+    import Check from "$lib/icons/Check.svelte";
+    import SearchBar from "$lib/SearchBar.svelte";
+    import Editable from "$lib/components/Editable.svelte";
+    import Cross from "$lib/icons/Cross.svelte";
 
     let { data = $bindable() }: { data: PageData } = $props();
 
     let showDeleteConfirm = $state(false);
+    let editing = $state(false);
+    let listForm = $state({
+        title: data.list.title,
+        items: data.list.items,
+    });
+    $inspect(data.list.items[0]);
 
     async function deleteList() {
         const res = await fetch(`/api/lists/${data.list.id}`, {
@@ -20,6 +30,25 @@
         console.log(body);
         goto("..");
     }
+
+    async function updateList() {
+        const res = await fetch(`/api/lists/${data.list.id}`, {
+            method: "PATCH",
+            body: JSON.stringify(listForm),
+        });
+        const body = await res.json();
+        console.log(body);
+        editing = false;
+    }
+
+    function cancelUpdate() {
+        editing = false;
+        listForm = {
+            title: data.list.title,
+            items: data.list.items,
+        };
+        window.location.reload();
+    }
 </script>
 
 <main>
@@ -28,14 +57,33 @@
             <ArrowLeft />
         </Button>
         <div class="list-details">
-            <h1 class="title">{data.list.title}</h1>
-            <p class="subtitle">{data.list.created_by}</p>
+            {#if editing}
+                <Editable
+                    bind:content={listForm.title}
+                    placeholder="Enter title"
+                    class="title"
+                />
+            {:else}
+                <h1 class="title">{data.list.title}</h1>
+            {/if}
+            <a href={`/${data.list.created_by}`} class="subtitle"
+                >{data.list.created_by}</a
+            >
         </div>
         <div class="list-actions">
             {#if data.list.created_by === useClerkContext().user?.username}
-                <Button variant="ghost">
-                    <Edit />
-                </Button>
+                {#if editing}
+                    <Button variant="ghost" onclick={cancelUpdate}>
+                        <Cross />
+                    </Button>
+                    <Button variant="ghost" onclick={updateList}>
+                        <Check />
+                    </Button>
+                {:else}
+                    <Button variant="ghost" onclick={() => (editing = true)}>
+                        <Edit />
+                    </Button>
+                {/if}
                 <Button
                     variant="ghost"
                     style="color: var(--warning);"
@@ -46,7 +94,17 @@
             {/if}
         </div>
     </div>
-    <List bind:items={data.list.items} />
+    {#if editing}
+        <div class="search-panel">
+            <SearchBar
+                small
+                floating
+                add
+                handleAdd={(item) => listForm.items.push(item)}
+            />
+        </div>
+    {/if}
+    <List bind:items={listForm.items} {editing} />
 </main>
 
 {#if showDeleteConfirm}
@@ -63,6 +121,13 @@
         flex-direction: column;
         gap: 10px;
         margin: 5px;
+    }
+
+    .subtitle {
+        text-decoration: none;
+        &:hover {
+            color: var(--focused);
+        }
     }
 
     .topbar {
@@ -92,5 +157,12 @@
         background-color: var(--background);
         padding: 20px;
         z-index: 1;
+    }
+
+    .search-panel {
+        padding: 5px;
+        height: 100%;
+        width: 15%;
+        margin-inline: auto;
     }
 </style>

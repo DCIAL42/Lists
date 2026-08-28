@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ url }) => {
     const tab = url.searchParams.get("type")
     if (tab === null || query === null) {
         return {
-            items: [], query: "", tab: ""
+            items: [], query: ""
         }
     }
 

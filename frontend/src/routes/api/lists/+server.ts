@@ -24,6 +24,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const data = await res.json()
 
+    if (!res.ok) {
+        return json(data, {
+            status: res.status
+        })
+    }
+
+
     return json(data)
 }
 
@@ -39,8 +46,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
     const res = await fetch(u)
 
+    if (!res.ok) {
+        const body = await res.json()
+        return json(body)
+    }
+
     const data = await res.json()
-    console.log(res, data)
 
     return json(data)
 }

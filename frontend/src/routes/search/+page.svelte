@@ -3,15 +3,15 @@
     import type { MediaItem, MediaType } from "$lib/types";
 
     let {
-        data,
-    }: { data: { items: MediaItem[]; query: string; tab: MediaType } } =
+        data = $bindable(),
+    }: { data: { items: MediaItem[]; query: string; tab?: MediaType } } =
         $props();
-    let items = $state(data.items);
-    let query = $state(data.query);
-    let tab = $state(data.tab);
+    let items = $state.raw(data.items);
+    let query = $state.raw(data.query);
+    let tab = $state.raw(data.tab ?? "movie");
 </script>
 
-<SearchBar bind:items bind:query bind:tab />
+<SearchBar bind:items bind:query bind:tab floating={false} />
 
 <!-- <div class="results"> -->
 <!--     {#if items} -->

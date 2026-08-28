@@ -34,6 +34,7 @@
             bind:tab
             bind:query
             small
+            floating
             onkeydown={(e) => {
                 if (e.key === "Enter") {
                     e.preventDefault();
