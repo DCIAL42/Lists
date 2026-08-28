@@ -27,10 +27,6 @@
 </div>
 
 <style>
-    /* div { */
-    /*     pointer-events: none; */
-    /* } */
-
     svg {
         color: var(--primary-muted);
     }

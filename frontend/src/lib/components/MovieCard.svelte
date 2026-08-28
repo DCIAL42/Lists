@@ -22,6 +22,3 @@
     {add}
     {onclick}
 />
-
-<style>
-</style>

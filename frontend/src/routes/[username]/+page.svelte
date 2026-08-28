@@ -24,7 +24,6 @@
         message: "",
     });
     let loading = $state(true);
-    $inspect(data);
 
     async function getProfile() {
         loading = true;

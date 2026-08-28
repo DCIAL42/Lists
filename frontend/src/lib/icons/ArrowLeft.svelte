@@ -23,9 +23,6 @@
 </div>
 
 <style>
-    /* div { */
-    /*     pointer-events: none; */
-    /* } */
     div {
         display: flex;
     }

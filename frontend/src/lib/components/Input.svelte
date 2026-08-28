@@ -42,10 +42,10 @@
         border-radius: 4px;
         display: flex;
         align-items: center;
-    }
 
-    .input-outer:focus-within {
-        outline: 1px solid var(--primary);
+        &:focus-within {
+            outline: 1px solid var(--primary);
+        }
     }
 
     input {
@@ -56,32 +56,32 @@
         flex: 1;
         background-color: var(--background);
         color: var(--primary);
-    }
 
-    input[type="search"]::-webkit-search-cancel-button {
-        -webkit-appearance: none;
-        height: 1.2em;
-        width: 1.2em;
-        background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXgtaWNvbiBsdWNpZGUteCI+PHBhdGggZD0iTTE4IDYgNiAxOCIvPjxwYXRoIGQ9Im02IDYgMTIgMTIiLz48L3N2Zz4=)
-            no-repeat 50% 50%;
-        background-size: contain;
-        opacity: 0.5;
-        cursor: pointer;
-    }
+        &:focus {
+            outline: none;
+        }
 
-    input[type="search"]::-webkit-search-cancel-button:hover {
-        opacity: 1;
-    }
+        &[type="search"]::-webkit-search-cancel-button {
+            -webkit-appearance: none;
+            height: 1.2em;
+            width: 1.2em;
+            background: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXgtaWNvbiBsdWNpZGUteCI+PHBhdGggZD0iTTE4IDYgNiAxOCIvPjxwYXRoIGQ9Im02IDYgMTIgMTIiLz48L3N2Zz4=)
+                no-repeat 50% 50%;
+            background-size: contain;
+            opacity: 0.5;
+            cursor: pointer;
 
-    input:focus {
-        outline: none;
+            &:hover {
+                opacity: 1;
+            }
+        }
     }
 
     .input-left-icon {
         padding-left: 10px;
-    }
 
-    .input-left-icon :global(svg) {
-        height: 16px;
+        :global(svg) {
+            height: 16px;
+        }
     }
 </style>

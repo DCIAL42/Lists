@@ -151,11 +151,33 @@
         position: relative;
         width: fit-content;
         height: fit-content;
-    }
 
-    .cover img {
-        display: block;
-        width: 100%;
+        img {
+            display: block;
+            width: 100%;
+        }
+
+        &::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            transition: background 0.2s ease;
+            pointer-events: none;
+        }
+
+        &:hover {
+            &::after {
+                background: rgba(0, 0, 0, 0.2);
+            }
+
+            .hover-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                padding: 5px;
+            }
+        }
     }
 
     .hover-actions {
@@ -164,25 +186,5 @@
         left: 100%;
         transform: translateX(-100%);
         display: none;
-    }
-
-    .cover::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0);
-        transition: background 0.2s ease;
-        pointer-events: none;
-    }
-
-    .cover:hover::after {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    .cover:hover .hover-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        padding: 5px;
     }
 </style>

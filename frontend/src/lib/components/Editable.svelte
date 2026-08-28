@@ -32,15 +32,17 @@
     .editable-field {
         margin: 0;
         cursor: text;
-    }
 
-    .editable-field.empty[placeholder]::before {
-        content: attr(placeholder);
-        color: var(--primary);
-        font-style: italic;
-    }
+        &.empty[placeholder] {
+            &::before {
+                content: attr(placeholder);
+                color: var(--primary);
+                font-style: italic;
+            }
 
-    .editable-field.empty[placeholder]:focus::before {
-        content: "";
+            &:focus::before {
+                content: "";
+            }
+        }
     }
 </style>

@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { afterNavigate, goto } from "$app/navigation";
     import Button from "$lib/components/Button.svelte";
     import ArrowLeft from "$lib/icons/ArrowLeft.svelte";
     import Edit from "$lib/icons/Edit.svelte";
@@ -11,29 +10,35 @@
     import SearchBar from "$lib/SearchBar.svelte";
     import Editable from "$lib/components/Editable.svelte";
     import Cross from "$lib/icons/Cross.svelte";
-    import { resolve } from "$app/paths";
 
     let { data = $bindable() }: { data: PageData } = $props();
 
     let showDeleteConfirm = $state(false);
+    let errorToast = {
+        show: false,
+        message: "",
+    };
     let editing = $state(false);
     let listForm = $state({
         title: data.list.title,
         items: data.list.items,
     });
-    let previousPage: string = resolve("/");
 
-    afterNavigate(({ from }) => {
-        previousPage = from?.url.pathname || previousPage;
-    });
+    function goBack() {
+        history.back();
+    }
 
     async function deleteList() {
         const res = await fetch(`/api/lists/${data.list.id}`, {
             method: "DELETE",
         });
-        const body = await res.json();
-        console.log(body);
-        goto(previousPage);
+        if (!res.ok) {
+            const body: { error: string } = await res.json();
+            errorToast.show = true;
+            errorToast.message = body.error;
+            return;
+        }
+        goBack();
     }
 
     async function updateList() {
@@ -41,8 +46,12 @@
             method: "PATCH",
             body: JSON.stringify(listForm),
         });
-        const body = await res.json();
-        console.log(body);
+        if (!res.ok) {
+            const body: { error: string } = await res.json();
+            errorToast.show = true;
+            errorToast.message = body.error;
+            return;
+        }
         editing = false;
     }
 
@@ -58,7 +67,7 @@
 
 <main>
     <div class="topbar">
-        <Button variant="ghost" onclick={() => goto("/lists")}>
+        <Button variant="ghost" onclick={goBack}>
             <ArrowLeft />
         </Button>
         <div class="list-details">
@@ -120,6 +129,13 @@
     </div>
 {/if}
 
+{#if errorToast.show}
+    <div class="toast">
+        <p>Error deleting list</p>
+        <p>{errorToast.message}</p>
+    </div>
+{/if}
+
 <style>
     main {
         display: flex;
@@ -162,6 +178,17 @@
         background-color: var(--background);
         padding: 20px;
         z-index: 1;
+    }
+
+    .toast {
+        position: fixed;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        top: 100%;
+        left: 100%;
+        width: 10%;
+        padding: 5px;
+        transform: translate(-105%, -105%);
     }
 
     .search-panel {

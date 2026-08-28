@@ -27,7 +27,6 @@
 ></div>
 
 <style>
-    /* Skeleton Styles */
     .skeleton {
         background-color: var(--skeleton-base);
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -36,14 +35,12 @@
         border-radius: var(--border-radius);
     }
 
-    /* Animation Keyframes */
     @keyframes pulse {
         50% {
             opacity: 0.5;
         }
     }
 
-    /* Reduced Motion Support */
     @media (prefers-reduced-motion: reduce) {
         .skeleton {
             animation: none;

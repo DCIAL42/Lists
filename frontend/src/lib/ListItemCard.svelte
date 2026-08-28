@@ -109,11 +109,11 @@
         gap: 5px;
         padding: 5px;
         align-items: center;
-    }
 
-    .list-item.small {
-        padding: 0;
-        width: fit-content;
+        &.small {
+            padding: 0;
+            width: fit-content;
+        }
     }
 
     .list-text {
@@ -132,10 +132,10 @@
 
     .cover {
         max-width: 250px;
-    }
 
-    .cover.small {
-        max-width: unset;
-        width: 100%;
+        &.small {
+            max-width: unset;
+            width: 100%;
+        }
     }
 </style>

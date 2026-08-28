@@ -44,34 +44,32 @@
     .primary,
     .icon {
         background-color: var(--primary);
-    }
 
-    .primary:hover,
-    .icon:hover {
-        background-color: color-mix(in srgb, var(--primary) 80%, white);
+        &:hover {
+            background-color: color-mix(in srgb, var(--primary) 80%, white);
+        }
     }
 
     .ghost {
         background-color: transparent;
         border: none;
-    }
 
-    .ghost.default {
-        color: var(--primary);
-    }
+        &.default {
+            color: var(--primary);
+        }
 
-    .ghost:hover {
-        background-color: color-mix(in srgb, transparent 80%, black);
+        &:hover {
+            background-color: color-mix(in srgb, transparent 80%, black);
+        }
     }
 
     .warning {
         background-color: var(--warning);
         border: none;
-    }
 
-    .warning:hover {
-        /* background-color: rgba(var(--warning), 0.9); */
-        background-color: color-mix(in srgb, var(--warning) 70%, white);
+        &:hover {
+            background-color: color-mix(in srgb, var(--warning) 70%, white);
+        }
     }
 
     .selected {

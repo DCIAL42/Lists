@@ -28,7 +28,7 @@
         background-size: cover;
         background-repeat: no-repeat;
 
-        > h1 {
+        h1 {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;

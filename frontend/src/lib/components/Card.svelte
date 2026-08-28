@@ -46,6 +46,11 @@
         gap: 10px;
         transition: 0.5s ease;
         background-color: var(--background);
+
+        &:hover {
+            box-shadow: gray 2px 2px;
+            transform: scale(1.005);
+        }
     }
 
     .card-left {
@@ -54,11 +59,6 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
-    }
-
-    .card:hover {
-        box-shadow: gray 2px 2px;
-        transform: scale(1.005);
     }
 
     .cover {
