@@ -2,6 +2,7 @@ package cmn
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -10,10 +11,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func InitDB(models ...any) (db *gorm.DB, err error) {
-	db, err = gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			logger.Config{
+				IgnoreRecordNotFoundError: true,
+			},
+		),
+	})
 
 	if err != nil {
 		return

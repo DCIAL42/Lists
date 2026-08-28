@@ -6,7 +6,6 @@ import (
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Service struct {
@@ -59,7 +58,7 @@ func (s *Service) updateTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResp
 
 func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingResponse, err error) {
 	var item cmn.TrackingItem
-	result := s.DB.Clauses(clause.Returning{}).Where("id = ? AND user_id = ?", id, userID).Delete(&item)
+	result := s.DB.Where("id = ? AND user_id = ?", id, userID).Delete(&item)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}

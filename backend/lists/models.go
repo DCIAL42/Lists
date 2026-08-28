@@ -11,6 +11,11 @@ type ListItem struct {
 	ExternalID string        `json:"external_id"`
 }
 
+type UpdateListRequest struct {
+	Title string     `json:"title"`
+	Items []ListItem `json:"items"`
+}
+
 type List struct {
 	cmn.Model
 	UserID string

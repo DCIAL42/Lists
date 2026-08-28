@@ -25,30 +25,20 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 		return
 	}
 
-	movies := make([]Movie, 0, len(data.Results))
-
-	for _, r := range data.Results {
-		movies = append(movies, Movie{
-			Title:      r.Title,
-			Popularity: r.Popularity,
-			Poster:     "https://image.tmdb.org/t/p/w500" + r.Poster,
-		})
-	}
-
-	sort.Slice(movies, func(i, j int) bool {
-		return movies[i].Popularity > movies[j].Popularity
+	sort.Slice(data.Results, func(i, j int) bool {
+		return data.Results[i].Popularity > data.Results[j].Popularity
 	})
 
-	results := make([]cmn.MediaItem, 0, len(movies))
+	results := make([]cmn.MediaItem, 0, len(data.Results))
 
-	for i, m := range movies {
+	for _, r := range data.Results {
 		results = append(results, cmn.MediaItem{
 			Type:       cmn.TypeMovie,
-			ExternalID: strconv.Itoa(data.Results[i].ExternalID),
-			Cover:      m.Poster,
+			ExternalID: strconv.Itoa(r.ExternalID),
+			Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
 			Data: Movie{
-				Title:      m.Title,
-				Popularity: m.Popularity,
+				Title:      r.Title,
+				Popularity: r.Popularity,
 			},
 		})
 	}

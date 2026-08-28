@@ -1,6 +1,7 @@
 package lists
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -16,6 +17,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 	protected.GET("/:id", func(c *gin.Context) {
 		userID := c.GetString("userID")
+		fmt.Println(userID)
 		id, err := cmn.ParseParam[uint](c, "id")
 
 		if err != nil {
@@ -73,6 +75,16 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
+		if body.Title == "" {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "empty title field"})
+			return
+		}
+
+		if len(body.Items) == 0 {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "no items in list"})
+			return
+		}
+
 		body.UserID = userID
 
 		list, err := s.createList(body)
@@ -106,6 +118,30 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	})
 
 	protected.PATCH("/:id", func(c *gin.Context) {
+		userID := c.MustGet("userID").(string)
+
+		id, err := cmn.ParseParam[uint](c, "id")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		var body UpdateListRequest
+
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		res, err := s.updateList(id, userID, body)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
 	})
 }
 
@@ -137,7 +173,7 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 		next := cmn.NextPage(c.Request.URL)
 		switch format {
 		case "preview":
-			res, err := s.getListsPreviewByUser(user.ID, page)
+			res, err := s.getListsPreviewByUser(user.ID, &Settings{Page: page})
 			res.Next = next
 
 			if err != nil {
@@ -162,5 +198,22 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 		}
 
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid fmt query"})
+	})
+
+	r.GET("/lists/recent", func(c *gin.Context) {
+		username := c.Param("username")
+		user, err := users.GetUserByUsername(username)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "user not found"})
+			return
+		}
+
+		res, err := s.getListsPreviewByUser(user.ID, &Settings{Limit: 4})
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
 	})
 }

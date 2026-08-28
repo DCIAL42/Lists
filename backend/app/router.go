@@ -13,6 +13,7 @@ import (
 	"github.com/DCIAL42/lists/internals/search"
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
+	"github.com/DCIAL42/lists/review"
 	"github.com/DCIAL42/lists/tracking"
 	"github.com/DCIAL42/lists/users"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
@@ -63,6 +64,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&lists.ListItem{},
 		&cmn.TrackingItem{},
 		&users.Following{},
+		&review.Review{},
 	)
 
 	if err != nil {
@@ -86,6 +88,10 @@ func SetupRouter() (*gin.Engine, error) {
 	trackingGroup := api.Group("/tracking")
 	trackingService := tracking.NewService(db, clients)
 	trackingService.SetupRoutes(trackingGroup)
+
+	reviewGroup := api.Group("/review")
+	reviewService := review.NewService(db, clients)
+	reviewService.SetupRoutes(reviewGroup)
 
 	return r, nil
 }

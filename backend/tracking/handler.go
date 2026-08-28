@@ -49,7 +49,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 				c.IndentedJSON(http.StatusNotFound, gin.H{"error": "not found"})
 				return
 			}
-			c.IndentedJSON(http.StatusOK, test)
+			c.IndentedJSON(http.StatusOK, cmn.TrackingResponse{ID: test.ID, Status: test.Status})
 			return
 		}
 

@@ -1,6 +1,7 @@
 package lists
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -90,21 +91,55 @@ func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
 	return s.toListResponse(list, list.UserID)
 }
 
-func (s *Service) updateList(req List) (res ListResponse, err error) {
-	result := s.DB.Where("id = ? AND user_id = ?", req.ID, req.UserID).Updates(req)
+func (s *Service) updateList(id uint, userID string, req UpdateListRequest) (res ListResponse, err error) {
+	var list List
+	result := s.DB.
+		Model(&List{}).
+		Where("id = ? AND user_id = ?", id, userID).
+		Preload("Items").
+		First(&list)
 
 	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
-		return
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ListResponse{}, &cmn.HttpError{
+				Code:    http.StatusNotFound,
+				Message: "not found",
+			}
+		}
+
+		return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 	}
 
-	if result.RowsAffected == 0 {
-		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
-		return
+	first, _ := s.ResolveItem(req.Items[0].Type, req.Items[0].ExternalID)
+
+	err = s.DB.Transaction(func(tx *gorm.DB) error {
+		if req.Title != "" {
+			list.Title = req.Title
+		}
+
+		if len(req.Items) != 0 {
+			list.Cover = first.Cover
+
+			if err := tx.Unscoped().
+				Where("list_id = ?", list.ID).
+				Delete(&ListItem{}).Error; err != nil {
+				return err
+			}
+
+			list.Items = req.Items
+		}
+
+		return tx.Save(&list).Error
+	})
+
+	if err != nil {
+		return res, &cmn.HttpError{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		}
 	}
 
-	var list List
-	s.DB.First(&list, req.ID)
+	s.DB.Preload("Items").First(&list, id)
 
 	return s.toListResponse(list, list.UserID)
 }
@@ -122,12 +157,24 @@ func (s *Service) getListById(id uint, userID string) (res ListResponse, err err
 	return s.toListResponse(list, userID)
 }
 
-func (s *Service) getListsPreviewByUser(userID string, page uint) (res ListsPreviewResponse, err error) {
-	res.Page = page
+type Settings struct {
+	Page  uint
+	Limit uint
+	Full  bool
+}
+
+func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res ListsPreviewResponse, err error) {
+	if cfg.Page < 1 {
+		cfg.Page = 1
+	}
+	res.Page = cfg.Page
 	lists := make([]List, 0)
 
 	var result *gorm.DB
-	result, res.Count = s.GetPage(page, "id desc", &List{})
+	result, res.Count = s.GetPage(cfg.Page, "id desc", &List{})
+	if cfg.Limit > 0 {
+		result = result.Limit(int(cfg.Limit))
+	}
 	result = result.Where("user_id = ?", userID).Find(&lists)
 
 	if result.Error != nil {
