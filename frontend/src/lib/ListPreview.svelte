@@ -19,7 +19,7 @@
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 10px;
-        width: 250px;
+        width: 300px;
         display: flex;
         flex-direction: column;
         color: var(--primary-foreground-muted);
@@ -27,6 +27,12 @@
         background-position: center;
         background-size: cover;
         background-repeat: no-repeat;
+
+        > h1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 
     a {

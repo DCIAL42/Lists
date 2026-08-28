@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
+    import { afterNavigate, goto } from "$app/navigation";
     import Button from "$lib/components/Button.svelte";
     import ArrowLeft from "$lib/icons/ArrowLeft.svelte";
     import Edit from "$lib/icons/Edit.svelte";
@@ -11,6 +11,7 @@
     import SearchBar from "$lib/SearchBar.svelte";
     import Editable from "$lib/components/Editable.svelte";
     import Cross from "$lib/icons/Cross.svelte";
+    import { resolve } from "$app/paths";
 
     let { data = $bindable() }: { data: PageData } = $props();
 
@@ -20,7 +21,11 @@
         title: data.list.title,
         items: data.list.items,
     });
-    $inspect(data.list.items[0]);
+    let previousPage: string = resolve("/");
+
+    afterNavigate(({ from }) => {
+        previousPage = from?.url.pathname || previousPage;
+    });
 
     async function deleteList() {
         const res = await fetch(`/api/lists/${data.list.id}`, {
@@ -28,7 +33,7 @@
         });
         const body = await res.json();
         console.log(body);
-        goto("..");
+        goto(previousPage);
     }
 
     async function updateList() {

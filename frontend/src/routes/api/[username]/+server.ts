@@ -1,21 +1,8 @@
 import { env } from "$env/dynamic/private";
-import type { ListMeta, MediaItem, UserResponse } from "$lib/types";
-import type { PageServerLoad } from "./$types"
+import type { ListsPreviewData, TrackingListData, UserResponse } from "$lib/types";
+import { json, type RequestHandler } from "@sveltejs/kit";
 
-interface ListsPreviewData {
-    lists: ListMeta[];
-    next: string;
-    page: number;
-    count: number;
-}
-
-interface TrackingListData {
-    items: MediaItem[];
-    count: number;
-}
-
-
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const GET: RequestHandler = async ({ locals, params }) => {
     const { userId, ...auth } = locals.auth();
     const token = await auth.getToken()
 
@@ -46,8 +33,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
         const trackingData: TrackingListData = await trackingRes.json()
 
-        return { userData, trackingData, listsData }
+        return json({ userData, trackingData, listsData })
     }
 
-    return { userData, listsData }
+    return json({ userData, listsData })
 }

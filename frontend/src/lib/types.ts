@@ -58,3 +58,21 @@ export interface UserResponse {
     id: string
     username: string
 }
+
+export interface ListsPreviewData {
+    lists: ListMeta[];
+    next: string;
+    page: number;
+    count: number;
+}
+
+export interface TrackingListData {
+    items: MediaItem[];
+    count: number;
+}
+
+export interface ProfileData {
+    trackingData: TrackingListData;
+    listsData: ListsPreviewData;
+    userData: UserResponse;
+}

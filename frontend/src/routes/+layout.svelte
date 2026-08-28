@@ -4,6 +4,7 @@
     import "../app.css";
     import { ModeWatcher } from "mode-watcher";
     import Nav from "$lib/Nav.svelte";
+    import { PUBLIC_CLERK_PUBLISHABLE_KEY } from "$env/static/public";
 
     let { children } = $props();
 </script>
@@ -12,7 +13,7 @@
     <link rel="icon" href={favicon} />
 </svelte:head>
 
-<ClerkProvider>
+<ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
     <Nav />
 
     <ModeWatcher />
