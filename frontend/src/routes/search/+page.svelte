@@ -16,7 +16,7 @@
 <!-- <div class="results"> -->
 <!--     {#if items} -->
 <!--         {#each items as item} -->
-<!--             <ListItemCard {item} /> -->
+<!--             <ItemCard {item} /> -->
 <!--         {/each} -->
 <!--     {/if} -->
 <!-- </div> -->

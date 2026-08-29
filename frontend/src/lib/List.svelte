@@ -1,5 +1,5 @@
 <script lang="ts">
-    import ListItemCard from "$lib/ListItemCard.svelte";
+    import ItemCard from "$lib/ItemCard.svelte";
     import {
         SortableList,
         sortItems,
@@ -10,10 +10,12 @@
         items = $bindable(),
         editing = false,
         loading = false,
+        numbered = true,
     }: {
         items: MediaItem[];
         editing?: boolean;
         loading?: boolean;
+        numbered?: boolean;
     } = $props();
 
     function tag_items(items: MediaItem[]) {
@@ -51,13 +53,13 @@
         >
             {#each tag_items(items) as item, index (index)}
                 <SortableList.Item {...item} {index}>
-                    <ListItemCard
+                    <ItemCard
                         {item}
                         {index}
                         {editing}
                         dragging={dragIdx === index}
                         bind:loading
-                        numbered
+                        {numbered}
                         {onRemoveClick}
                     />
                 </SortableList.Item>
@@ -65,12 +67,13 @@
         </SortableList.Root>
     {:else}
         {#each tag_items(items) as item, index (index)}
-            <ListItemCard
+            <ItemCard
                 {item}
                 {index}
                 {editing}
                 dragging={dragIdx === index}
                 bind:loading
+                {numbered}
                 {onRemoveClick}
             />
         {/each}

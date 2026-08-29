@@ -1,6 +1,6 @@
 <script lang="ts">
     import Tabs from "$lib/components/Tabs.svelte";
-    import ListItemCard from "$lib/ListItemCard.svelte";
+    import ItemCard from "$lib/ItemCard.svelte";
     import type { MediaItem, MediaType } from "$lib/types";
     import type { HTMLAttributes } from "svelte/elements";
 
@@ -23,7 +23,7 @@
 <div class="results" class:small {...rest}>
     <Tabs tabs={["movie", "album"]} bind:selected={tab} />
     {#each items as _, i}
-        <ListItemCard
+        <ItemCard
             bind:item={items[i]}
             {small}
             {add}

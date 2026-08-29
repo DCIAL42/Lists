@@ -2,7 +2,7 @@
     import Button from "$lib/components/Button.svelte";
     import Skeleton from "$lib/components/Skeleton.svelte";
     import Tabs from "$lib/components/Tabs.svelte";
-    import ListItemCard from "$lib/ListItemCard.svelte";
+    import ItemCard from "$lib/ItemCard.svelte";
     import ListPreview from "$lib/ListPreview.svelte";
     import type {
         MediaType,
@@ -131,7 +131,7 @@
         {:else if tab === "tracking"}
             <div class="items">
                 {#each data.trackingData.items as item, index}
-                    <ListItemCard {item} {index} small {onTrackingChange} />
+                    <ItemCard {item} {index} small {onTrackingChange} />
                 {/each}
                 {#if loading}
                     {#each Array(9) as _}
