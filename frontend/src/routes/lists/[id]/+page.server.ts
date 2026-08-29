@@ -3,6 +3,11 @@ import type { PageServerLoad } from "./$types"
 import type { List } from "$lib/types"
 import { env } from "$env/dynamic/private"
 
+interface Like {
+    id?: number
+    liked: boolean
+}
+
 export const load: PageServerLoad = async ({ params, locals }) => {
     const token = await locals.auth().getToken()
 
@@ -20,7 +25,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         throw error(res.status, errorData.error || `Failed to fetch list ${params.id}`)
     }
 
-    const list: List = await res.json()
+    const { list, like }: { list: List, like: Like } = await res.json()
 
-    return { list }
+    return { list, like }
 }

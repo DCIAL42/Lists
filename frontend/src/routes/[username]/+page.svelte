@@ -56,7 +56,6 @@
         );
 
         const body: { items: MediaItem[]; total: number } = await res.json();
-        console.log(body);
 
         data = {
             ...data,
