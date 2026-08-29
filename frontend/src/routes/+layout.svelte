@@ -1,5 +1,5 @@
 <script lang="ts">
-    import favicon from "$lib/assets/favicon.svg";
+    import favicon from "$lib/assets/favicon.ico";
     import { ClerkProvider } from "svelte-clerk";
     import "../app.css";
     import { ModeWatcher } from "mode-watcher";
