@@ -1,7 +1,6 @@
 package lists
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -17,7 +16,6 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 	protected.GET("/:id", func(c *gin.Context) {
 		userID := c.GetString("userID")
-		fmt.Println(userID)
 		id, err := cmn.ParseParam[uint](c, "id")
 
 		if err != nil {

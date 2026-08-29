@@ -3,14 +3,12 @@ package music
 import (
 	"net/http"
 
-	"github.com/DCIAL42/lists/db"
+	"github.com/DCIAL42/lists/cmn"
+	"gorm.io/gorm"
 )
 
-type Service struct {
-	*db.DBService
-}
-
 type Client struct {
+	*gorm.DB
 	httpClient   *http.Client
 	baseURL      string
 	searchPath   string
@@ -43,6 +41,9 @@ type AlbumData struct {
 }
 
 type Album struct {
-	ID string `gorm:"primaryKey"`
-	AlbumData
+	cmn.Model
+	ExternalID string `gorm:"uniqueIndex;not null"`
+	Title      string
+	Artist     string
+	Cover      string
 }

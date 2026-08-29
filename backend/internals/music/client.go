@@ -13,7 +13,9 @@ import (
 	"strings"
 
 	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
 	"github.com/DCIAL42/lists/internals/client"
+	"gorm.io/gorm"
 )
 
 type TokenResponse struct {
@@ -43,6 +45,39 @@ func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
 	}
 }
 
+func (r *AlbumResponse) toAlbumData() AlbumData {
+	var artist string
+	if len(r.Artists) > 0 {
+		artist = r.Artists[0].Name
+	}
+	var cover string
+	if len(r.Images) > 0 {
+		cover = r.Images[0].URL
+	}
+
+	return AlbumData{
+		Title:  r.Title,
+		Artist: artist,
+		Cover:  cover,
+	}
+}
+
+func (a Album) GetExternalID() string {
+	return a.ExternalID
+}
+
+func (a *Album) toMediaItem() cmn.MediaItem {
+	return cmn.MediaItem{
+		Type:       cmn.TypeAlbum,
+		ExternalID: a.ExternalID,
+		Cover:      a.Cover,
+		Data: AlbumData{
+			Title:  a.Title,
+			Artist: a.Artist,
+		},
+	}
+}
+
 func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
 	var data Response
 
@@ -58,6 +93,14 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 	albums := make([]cmn.MediaItem, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
+		albumdata := r.toAlbumData()
+		album := &Album{
+			ExternalID: r.ExternalID,
+			Title:      r.Title,
+			Artist:     albumdata.Artist,
+			Cover:      albumdata.Cover,
+		}
+		db.TrySaveItem(c.DB, album)
 		albums = append(albums, r.toMediaItem())
 	}
 
@@ -120,8 +163,9 @@ func (c *Client) fetchToken(ctx context.Context) {
 	c.headers["Authorization"] = tokenData.Type + " " + tokenData.Token
 }
 
-func NewMusicClient(httpClient *http.Client) *Client {
+func NewMusicClient(httpClient *http.Client, DB *gorm.DB) *Client {
 	c := &Client{
+		DB,
 		httpClient,
 		"https://api.spotify.com/v1",
 		"/search",
@@ -173,6 +217,11 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 }
 
 func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
+	var item Album
+	ok := db.TryGetItem(c.DB, ID, &item)
+	if ok {
+		return item.toMediaItem(), nil
+	}
 	targetUrl := c.baseURL + "/albums/" + ID
 
 	resp, err := c.TryRequest(context.Background(), targetUrl)

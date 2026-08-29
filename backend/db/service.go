@@ -75,3 +75,34 @@ func (db *DBService) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResp
 		Status: item.Status,
 	}, nil
 }
+
+type ExternalItem interface {
+	GetExternalID() string
+}
+
+func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
+	var existing T
+	result := DB.Where("external_id = ?", (*dst).GetExternalID()).First(&existing)
+
+	if result.Error == nil {
+		return false, nil
+	}
+
+	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return false, result.Error
+	}
+
+	if err := DB.Create(dst).Error; err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func TryGetItem(DB *gorm.DB, externalID string, dst any) bool {
+	result := DB.Where("external_id = ?", externalID).First(dst)
+	if result.Error != nil {
+		return false
+	}
+	return true
+}

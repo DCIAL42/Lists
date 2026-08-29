@@ -13,7 +13,7 @@ import (
 	"github.com/DCIAL42/lists/internals/search"
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
-	"github.com/DCIAL42/lists/review"
+	"github.com/DCIAL42/lists/social/review"
 	"github.com/DCIAL42/lists/tracking"
 	"github.com/DCIAL42/lists/users"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
@@ -54,18 +54,19 @@ func SetupRouter() (*gin.Engine, error) {
 
 	api := r.Group("/api")
 
-	clients := map[cmn.MediaType]cmn.Client{
-		cmn.TypeAlbum: music.NewMusicClient(httpClient),
-		cmn.TypeMovie: movies.NewMovieClient(httpClient),
-	}
-
 	db, err := cmn.InitDB(
 		&lists.List{},
 		&lists.ListItem{},
 		&cmn.TrackingItem{},
 		&users.Following{},
 		&review.Review{},
+		&music.Album{},
 	)
+
+	clients := map[cmn.MediaType]cmn.Client{
+		cmn.TypeAlbum: music.NewMusicClient(httpClient, db),
+		cmn.TypeMovie: movies.NewMovieClient(httpClient),
+	}
 
 	if err != nil {
 		return nil, err

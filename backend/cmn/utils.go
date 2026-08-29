@@ -15,14 +15,20 @@ import (
 )
 
 func InitDB(models ...any) (db *gorm.DB, err error) {
-	db, err = gorm.Open(postgres.Open(os.Getenv("DATABASE_URL")), &gorm.Config{
-		Logger: logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			logger.Config{
-				IgnoreRecordNotFoundError: true,
-			},
-		),
-	})
+	db, err = gorm.Open(
+		postgres.New(postgres.Config{
+			DSN:                  os.Getenv("DATABASE_URL"),
+			PreferSimpleProtocol: true,
+		}),
+		&gorm.Config{
+			Logger: logger.New(
+				log.New(os.Stdout, "\r\n", log.LstdFlags),
+				logger.Config{
+					IgnoreRecordNotFoundError: true,
+				},
+			),
+		},
+	)
 
 	if err != nil {
 		return
