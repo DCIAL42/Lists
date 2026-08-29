@@ -36,7 +36,7 @@ func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
 		Type:       cmn.TypeAlbum,
 		ExternalID: r.ExternalID,
 		Cover:      cover,
-		Data: Album{
+		Data: AlbumData{
 			Title:  r.Title,
 			Artist: artist,
 		},
@@ -75,6 +75,7 @@ func (c *Client) BuildURL(params map[string]string) string {
 		page = 0
 	}
 	params["offset"] = strconv.Itoa(page * 10)
+	params["fields"] = "albums(items(id,name,artists(name),images))"
 
 	for k, v := range params {
 		query.Set(k, v)

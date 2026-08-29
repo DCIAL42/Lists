@@ -2,7 +2,13 @@ package music
 
 import (
 	"net/http"
+
+	"github.com/DCIAL42/lists/db"
 )
+
+type Service struct {
+	*db.DBService
+}
 
 type Client struct {
 	httpClient   *http.Client
@@ -10,13 +16,6 @@ type Client struct {
 	searchPath   string
 	configParams map[string]string
 	headers      map[string]string
-}
-
-type Response struct {
-	Albums struct {
-		Items []AlbumResponse `json:"items"`
-		Next  string          `json:"next"`
-	} `json:"albums"`
 }
 
 type AlbumResponse struct {
@@ -30,8 +29,20 @@ type AlbumResponse struct {
 	} `json:"images"`
 }
 
-type Album struct {
+type Response struct {
+	Albums struct {
+		Items []AlbumResponse `json:"items"`
+		Next  string          `json:"next"`
+	} `json:"albums"`
+}
+
+type AlbumData struct {
 	Title  string `json:"title"`
 	Artist string `json:"artist"`
 	Cover  string `json:"cover"`
+}
+
+type Album struct {
+	ID string `gorm:"primaryKey"`
+	AlbumData
 }

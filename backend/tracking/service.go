@@ -79,13 +79,20 @@ func (s *Service) deleteTrackingItem(id uint, userID string) (res cmn.TrackingRe
 func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res TrackingListResponse, err error) {
 	list := make([]cmn.TrackingItem, 0)
 
-	result, count := s.GetPage(uint(page), "id desc", &cmn.TrackingItem{})
-	result = result.Where(
-		"user_id = ? AND status = ? AND type IN ?",
-		pat.UserID,
-		pat.Status,
-		pat.Types,
-	).Find(&list)
+	var count int64
+	result := s.DB.
+		Model(&cmn.TrackingItem{}).
+		Where(
+			"user_id = ? AND status = ? AND type IN ?",
+			pat.UserID,
+			pat.Status,
+			pat.Types,
+		).
+		Order("id desc").
+		Count(&count).
+		Offset((int(page) - 1) * int(s.PageSize)).
+		Limit(int(s.PageSize)).
+		Find(&list)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
