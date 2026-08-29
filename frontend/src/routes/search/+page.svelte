@@ -11,7 +11,9 @@
     let tab = $state.raw(data.tab ?? "movie");
 </script>
 
-<SearchBar bind:items bind:query bind:tab floating={false} />
+<main>
+    <SearchBar bind:items bind:query bind:tab floating={false} />
+</main>
 
 <!-- <div class="results"> -->
 <!--     {#if items} -->
@@ -26,3 +28,11 @@
 <!--         padding: 5px; -->
 <!--     } -->
 <!-- </style> -->
+
+<style>
+    main {
+        padding: 10px;
+        width: 90%;
+        margin-inline: auto;
+    }
+</style>

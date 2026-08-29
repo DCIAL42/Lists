@@ -40,6 +40,7 @@
         width: fit-content;
         position: absolute;
         left: 50%;
+        width: 100%;
         transform: translateX(-50%);
     }
 
@@ -52,6 +53,5 @@
         margin-top: 10px;
         background-color: var(--background);
         z-index: 9999;
-        width: 100%;
     }
 </style>

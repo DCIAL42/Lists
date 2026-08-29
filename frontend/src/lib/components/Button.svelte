@@ -46,7 +46,11 @@
         background-color: var(--primary);
 
         &:hover {
-            background-color: color-mix(in srgb, var(--primary) 80%, white);
+            background-color: color-mix(
+                in srgb,
+                var(--primary) 80%,
+                var(--primary-foreground)
+            );
         }
     }
 
@@ -59,7 +63,11 @@
         }
 
         &:hover {
-            background-color: color-mix(in srgb, transparent 80%, black);
+            background-color: color-mix(
+                in srgb,
+                transparent 80%,
+                var(--primary)
+            );
         }
     }
 

@@ -117,11 +117,13 @@
         <Tabs tabs={["album", "movie", "game"]} bind:selected={mediaTypes} />
     {/if}
 
-    {#if loading}
-        <Profile loading />
-    {:else if data && data.trackingData}
+    {#if data && data.trackingData}
         {#if tab === "profile"}
-            <Profile {data} />
+            {#if loading}
+                <Profile loading />
+            {:else}
+                <Profile {data} />
+            {/if}
         {:else if tab === "lists"}
             <div class="lists">
                 {#each data.listsData.lists as list}

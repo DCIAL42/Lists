@@ -82,6 +82,5 @@
 <style>
     .outer {
         position: relative;
-        width: 100%;
     }
 </style>
