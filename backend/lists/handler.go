@@ -30,7 +30,14 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		c.IndentedJSON(http.StatusOK, list)
+		like, err := s.likeService.GetLike(userID, id)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, gin.H{"list": list, "like": like})
 	})
 
 	r.GET("/", func(c *gin.Context) {

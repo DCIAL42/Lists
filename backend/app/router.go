@@ -13,6 +13,7 @@ import (
 	"github.com/DCIAL42/lists/internals/search"
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
+	"github.com/DCIAL42/lists/social/like"
 	"github.com/DCIAL42/lists/social/review"
 	"github.com/DCIAL42/lists/tracking"
 	"github.com/DCIAL42/lists/users"
@@ -61,6 +62,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&users.Following{},
 		&review.Review{},
 		&music.Album{},
+		&like.Like{},
 	)
 
 	clients := map[cmn.MediaType]cmn.Client{
@@ -81,8 +83,12 @@ func SetupRouter() (*gin.Engine, error) {
 	searchService := search.NewSearchService(clients, db)
 	searchService.SetupRoutes(searchGroup)
 
+	likeGroup := api.Group("/like")
+	likeService := like.NewService(db)
+	likeService.SetupRoutes(likeGroup)
+
 	listGroup := api.Group("/lists")
-	listService := lists.NewService(db, clients)
+	listService := lists.NewService(db, likeService, clients)
 	listService.SetupRoutes(listGroup)
 	listService.SetupUserRoutes(api.Group("/:username"))
 

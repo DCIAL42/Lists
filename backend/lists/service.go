@@ -8,6 +8,7 @@ import (
 
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
+	"github.com/DCIAL42/lists/social/like"
 	"github.com/DCIAL42/lists/users"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -17,11 +18,13 @@ import (
 
 type Service struct {
 	*db.DBService
+	likeService *like.Service
 }
 
-func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db.ServiceConfig) *Service {
+func NewService(DB *gorm.DB, likeService *like.Service, clients map[cmn.MediaType]cmn.Client, config ...*db.ServiceConfig) *Service {
 	return &Service{
-		DBService: db.NewDBService(DB, clients, config...),
+		DBService:   db.NewDBService(DB, clients, config...),
+		likeService: likeService,
 	}
 }
 
