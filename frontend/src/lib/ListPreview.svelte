@@ -33,6 +33,10 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        &:hover {
+            border: 1px solid var(--primary);
+        }
     }
 
     a {

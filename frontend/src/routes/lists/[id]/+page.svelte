@@ -14,6 +14,7 @@
 
     let { data = $bindable() }: { data: PageData } = $props();
 
+    let likeCount = $state(data.list.likes);
     let liked = $state(data.like.liked);
     let showDeleteConfirm = $state(false);
     let errorToast = {
@@ -70,6 +71,9 @@
         let method = "POST";
         if (liked) {
             method = "DELETE";
+            likeCount--;
+        } else {
+            likeCount++;
         }
         liked = !liked;
         const res = await fetch(`/api/lists/${data.list.id}/like`, {
@@ -123,9 +127,10 @@
                     <Trash />
                 </Button>
             {:else}
-                <Button variant="ghost" onclick={handleLike}
-                    ><Heart active={liked} /></Button
-                >
+                <Button variant="ghost" onclick={handleLike}>
+                    <Heart active={liked} />
+                </Button>
+                <p>{likeCount}</p>
             {/if}
         </div>
     </div>
@@ -217,5 +222,11 @@
         height: 100%;
         width: 15%;
         margin-inline: auto;
+    }
+
+    .list-actions {
+        display: flex;
+        gap: 5px;
+        padding: 5px;
     }
 </style>

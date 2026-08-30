@@ -37,6 +37,7 @@ export interface ListMeta {
     title: string
     created_by: string
     cover: string
+    likes: number
 }
 
 export interface List extends ListMeta {
