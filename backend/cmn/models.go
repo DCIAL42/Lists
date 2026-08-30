@@ -63,3 +63,9 @@ type SearchResult struct {
 	Next  string      `json:"next"`
 	Items []MediaItem `json:"items"`
 }
+
+type Like struct {
+	Model
+	UserID string
+	ListID uint
+}

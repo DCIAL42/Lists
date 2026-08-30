@@ -22,6 +22,7 @@ type List struct {
 	Title  string     `json:"title"`
 	Items  []ListItem `gorm:"foreignKey:ListID" json:"items"`
 	Cover  string     `json:"cover"`
+	Likes  []cmn.Like `gorm:"foreignKey:ListID"`
 }
 
 type ListMeta struct {
@@ -29,6 +30,7 @@ type ListMeta struct {
 	Title     string `json:"title"`
 	CreatedBy string `json:"created_by"`
 	Cover     string `json:"cover"`
+	Likes     uint   `json:"likes"`
 }
 
 type ListResponse struct {

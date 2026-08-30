@@ -41,7 +41,8 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	})
 
 	r.GET("/", func(c *gin.Context) {
-		order := c.DefaultQuery("order", "asc")
+		order := c.DefaultQuery("order", "desc")
+		orderBy := c.DefaultQuery("order_by", "id")
 		pageStr := c.DefaultQuery("page", "1")
 
 		val, err := strconv.ParseUint(pageStr, 10, 64)
@@ -53,12 +54,10 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		page := uint(val)
 
-		reverse := true
-		if order == "asc" {
-			reverse = false
-		}
-
-		res, err := s.getAllLists(page, reverse)
+		res, err := s.getAllLists(page, ListQueryCfg{
+			Order: order,
+			By:    orderBy,
+		})
 
 		if err != nil {
 			cmn.HandleError(c, err)

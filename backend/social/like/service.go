@@ -20,7 +20,7 @@ func NewService(DB *gorm.DB) *Service {
 }
 
 func (s *Service) GetLike(userID string, ListID uint) (res LikeResponse, err error) {
-	var like Like
+	var like cmn.Like
 	err = s.DB.
 		Where("user_id = ? AND list_id = ?", userID, ListID).
 		First(&like).Error
@@ -40,7 +40,7 @@ func (s *Service) GetLike(userID string, ListID uint) (res LikeResponse, err err
 }
 
 func (s *Service) createLike(userID string, req LikeRequest) (res LikeResponse, err error) {
-	var test Like
+	var test cmn.Like
 
 	result := s.DB.Unscoped().Where("list_id = ? AND user_id = ?", req.ListID, userID).First(&test)
 
@@ -63,11 +63,11 @@ func (s *Service) createLike(userID string, req LikeRequest) (res LikeResponse, 
 
 	if err := s.DB.
 		Where("user_id = ? AND list_id = ?", userID, req.ListID).
-		First(&Like{}).Error; err == nil {
+		First(&cmn.Like{}).Error; err == nil {
 		return LikeResponse{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "like already exists"}
 	}
 
-	like := Like{
+	like := cmn.Like{
 		UserID: userID,
 		ListID: req.ListID,
 	}
@@ -84,7 +84,7 @@ func (s *Service) createLike(userID string, req LikeRequest) (res LikeResponse, 
 }
 
 func (s *Service) deleteLike(userID string, listID uint) (res LikeResponse, err error) {
-	var like Like
+	var like cmn.Like
 	result := s.DB.Clauses(clause.Returning{}).Where("list_id = ? AND user_id = ?", listID, userID).Delete(&like)
 
 	if result.Error != nil {

@@ -53,6 +53,7 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Failed to fetch user details"}
 		return
 	}
+	likeCount := s.DB.Model(list).Association("Likes").Count()
 
 	return ListResponse{
 		ListMeta: ListMeta{
@@ -60,6 +61,7 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 			Title:     list.Title,
 			CreatedBy: *userDetails.Username,
 			Cover:     list.Cover,
+			Likes:     uint(likeCount),
 		},
 		Items: resolvedItems,
 	}, nil
@@ -174,7 +176,7 @@ func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res Lists
 	lists := make([]List, 0)
 
 	var result *gorm.DB
-	result, res.Count = s.GetPage(cfg.Page, "id desc", &List{})
+	result, res.Count = s.GetPage(cfg.Page, standardOrder("id", "desc"), &List{})
 	if cfg.Limit > 0 {
 		result = result.Limit(int(cfg.Limit))
 	}
@@ -190,11 +192,13 @@ func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res Lists
 	userDetails, err := users.GetUserDetails(userID)
 
 	for _, list := range lists {
+		likeCount := s.DB.Model(list).Association("Likes").Count()
 		listPreview := ListMeta{
 			list.ID,
 			list.Title,
 			*userDetails.Username,
 			list.Cover,
+			uint(likeCount),
 		}
 
 		res.Lists = append(res.Lists, listPreview)
@@ -208,7 +212,7 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 	lists := make([]List, 0)
 
 	var result *gorm.DB
-	result, res.Count = s.GetPage(page, "id desc", &List{})
+	result, res.Count = s.GetPage(page, standardOrder("id", "desc"), &List{})
 	result = result.Where("user_id = ?", userID).Preload("Items").Find(&lists)
 
 	if result.Error != nil {
@@ -220,6 +224,8 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 
 	for _, list := range lists {
 		listResponse, err := s.toListResponse(list, list.UserID)
+		likeCount := s.DB.Model(list).Association("Likes").Count()
+		listResponse.Likes = uint(likeCount)
 
 		if err != nil {
 			slog.Error("Failed converting to list response", "error:", err.Error())
@@ -232,18 +238,47 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 	return
 }
 
-func (s *Service) getAllLists(page uint, reverse bool) (res ListsPreviewResponse, err error) {
+type ListQueryCfg struct {
+	Order string
+	By    string
+}
+
+func orderByLikes(order string) func(*gorm.DB) *gorm.DB {
+	return func(d *gorm.DB) *gorm.DB {
+		return d.Select("lists.*, COUNT(likes.id) AS like_count").
+			Joins("LEFT JOIN likes ON likes.list_id = lists.id AND likes.deleted_at IS NULL").
+			Group("lists.id").
+			Order("like_count " + order)
+	}
+}
+
+func standardOrder(by, order string) func(*gorm.DB) *gorm.DB {
+	return func(d *gorm.DB) *gorm.DB {
+		return d.Order(by + " " + order)
+	}
+}
+
+func (s *Service) getAllLists(page uint, cfg ListQueryCfg) (res ListsPreviewResponse, err error) {
 	res.Page = page
 	lists := make([]List, 0)
 
-	order := "id asc"
-	if reverse {
-		order = "id desc"
+	if cfg.Order == "" {
+		cfg.Order = "desc"
+	} else if cfg.Order != "asc" && cfg.Order != "desc" {
+		return ListsPreviewResponse{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "order should be asc or desc"}
+	}
+
+	if cfg.By == "" {
+		cfg.By = "id"
 	}
 
 	var result *gorm.DB
-	result, res.Count = s.GetPage(page, order, &List{})
-	result = result.Find(&lists)
+	if cfg.By == "likes" {
+		result, res.Count = s.GetPage(page, orderByLikes(cfg.Order), &List{})
+	} else {
+		result, res.Count = s.GetPage(page, standardOrder(cfg.By, cfg.Order), &List{})
+	}
+	result = result.Preload("Likes").Find(&lists)
 
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
@@ -257,11 +292,13 @@ func (s *Service) getAllLists(page uint, reverse bool) (res ListsPreviewResponse
 		if err != nil {
 			return ListsPreviewResponse{}, err
 		}
+		likeCount := s.DB.Model(list).Association("Likes").Count()
 		res.Lists = append(res.Lists, ListMeta{
 			ID:        list.ID,
 			Title:     list.Title,
 			CreatedBy: *userDetails.Username,
 			Cover:     list.Cover,
+			Likes:     uint(likeCount),
 		})
 	}
 

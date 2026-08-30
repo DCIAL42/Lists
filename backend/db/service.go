@@ -50,14 +50,16 @@ func NewDBService(db *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*
 	}
 }
 
-func (db *DBService) GetPage(page uint, order string, dst any) (*gorm.DB, uint) {
+func (db *DBService) GetPage(page uint, order func(*gorm.DB) *gorm.DB, dst any) (*gorm.DB, uint) {
 	var count int64
-	result := db.DB.
-		Model(dst).
-		Order(order).
-		Count(&count).
+	if result := db.DB.Model(dst).Count(&count); result.Error != nil {
+		return result, 0
+	}
+
+	result := order(db.DB).
 		Offset((int(page) - 1) * int(db.PageSize)).
 		Limit(int(db.PageSize))
+
 	return result, uint(count)
 }
 

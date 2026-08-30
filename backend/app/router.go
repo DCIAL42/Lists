@@ -62,7 +62,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&users.Following{},
 		&review.Review{},
 		&music.Album{},
-		&like.Like{},
+		&cmn.Like{},
 	)
 
 	clients := map[cmn.MediaType]cmn.Client{
