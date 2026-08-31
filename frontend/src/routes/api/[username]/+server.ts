@@ -1,5 +1,5 @@
 import { env } from "$env/dynamic/private";
-import type { ListsPreviewData, TrackingListData, UserResponse } from "$lib/types";
+import type { Follow, ListsPreviewData, TrackingListData, UserResponse } from "$lib/types";
 import { json, type RequestHandler } from "@sveltejs/kit";
 
 export const GET: RequestHandler = async ({ locals, params }) => {
@@ -23,7 +23,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
             }
         })
 
@@ -33,8 +33,17 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
         const trackingData: TrackingListData = await trackingRes.json()
 
-        return json({ userData, trackingData, listsData })
+        return json({ self: true, userData, trackingData, listsData })
     }
 
-    return json({ userData, listsData })
+    const followRes = await fetch(`${backendURL}/${params.username}/follow`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+    const followData: Follow = await followRes.json()
+
+    return json({ self: false, userData, listsData, followData })
 }

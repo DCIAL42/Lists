@@ -1,12 +1,7 @@
 import { error } from "@sveltejs/kit"
 import type { PageServerLoad } from "./$types"
-import type { List } from "$lib/types"
+import type { Like, List } from "$lib/types"
 import { env } from "$env/dynamic/private"
-
-interface Like {
-    id?: number
-    liked: boolean
-}
 
 export const load: PageServerLoad = async ({ params, locals }) => {
     const token = await locals.auth().getToken()

@@ -9,8 +9,9 @@
         TrackingStatus,
         MediaItem,
         ProfileData,
+        Follow,
     } from "$lib/types.js";
-    import { onMount, untrack } from "svelte";
+    import { untrack } from "svelte";
     import { page } from "$app/state";
     import Profile from "$lib/Profile.svelte";
 
@@ -35,7 +36,7 @@
     }
 
     async function getTrackingItems() {
-        if (!data || !data.trackingData) return;
+        if (!data || !data.self) return;
         loading = true;
         data = { ...data, trackingData: { ...data.trackingData, items: [] } };
         const res = await fetch(
@@ -48,7 +49,7 @@
     }
 
     async function getMoreTrackingItems() {
-        if (!data || !data.trackingData) return;
+        if (!data || !data.self) return;
         loading = true;
         const page = Math.floor(data.trackingData.items.length / 10) + 1;
         const res = await fetch(
@@ -80,11 +81,28 @@
         }, 3000);
     }
 
-    onMount(async () => {
-        getProfile();
-    });
+    async function handleFollow() {
+        const username = page.params.username;
+        if (!username || !data || data.self) return;
+        if (data.followData.followed) {
+            if (!data.followData.id) return;
+            const res = await fetch(`api/follow/${data.followData.id}`, {
+                method: "DELETE",
+            });
+            const body: Follow = await res.json();
+            data = { ...data, followData: body };
+            return;
+        }
+        const res = await fetch(`/api/${username}/follow`, {
+            method: "POST",
+        });
+        if (!res.ok) return;
+        const body: Follow = await res.json();
+        data = { ...data, followData: body };
+    }
 
     $effect(() => {
+        void page.params.username;
         getProfile();
     });
 
@@ -99,9 +117,14 @@
 <main>
     <div class="user-details">
         <h1>{page.params.username}</h1>
+        {#if !loading && data && !data.self}
+            <Button onclick={handleFollow}>
+                {data.followData.followed ? "followed" : "follow"}
+            </Button>
+        {/if}
     </div>
     <hr style="width: 100%;" />
-    {#if data && data.trackingData}
+    {#if data?.self}
         <Tabs tabs={["profile", "lists", "tracking"]} bind:selected={tab} />
     {:else}
         <Tabs tabs={["profile", "lists"]} bind:selected={tab} />
@@ -116,40 +139,34 @@
         <Tabs tabs={["album", "movie", "game"]} bind:selected={mediaTypes} />
     {/if}
 
-    {#if data && data.trackingData}
-        {#if tab === "profile"}
-            {#if loading}
-                <Profile loading />
-            {:else}
-                <Profile {data} />
-            {/if}
-        {:else if tab === "lists"}
+    {#if tab === "profile"}
+        {#if loading || !data}
+            <Profile loading />
+        {:else}
+            <Profile {data} />
+        {/if}
+    {:else if tab === "lists"}
+        {#if loading || !data}{:else}
             <div class="lists">
                 {#each data.listsData.lists as list}
                     <ListPreview {list} />
                 {/each}
             </div>
-        {:else if tab === "tracking"}
-            <div class="items">
-                {#each data.trackingData.items as item, index}
-                    <ItemCard {item} {index} small {onTrackingChange} />
-                {/each}
-                {#if loading}
-                    {#each Array(9) as _}
-                        <Skeleton height={250} />
-                    {/each}
-                {/if}
-            </div>
-            {#if data.trackingData.count > data.trackingData.items.length}
-                <Button onclick={getMoreTrackingItems}>more</Button>
-            {/if}
         {/if}
-    {:else if data && data.listsData}
-        <div class="lists">
-            {#each data.listsData.lists as list}
-                <ListPreview {list} />
+    {:else if tab === "tracking" && data?.self}
+        <div class="items">
+            {#each data.trackingData.items as item, index}
+                <ItemCard {item} {index} small {onTrackingChange} />
             {/each}
+            {#if loading}
+                {#each Array(9) as _}
+                    <Skeleton height={250} />
+                {/each}
+            {/if}
         </div>
+        {#if data.trackingData.count > data.trackingData.items.length}
+            <Button onclick={getMoreTrackingItems}>more</Button>
+        {/if}
     {/if}
 
     {#if toastData.show}

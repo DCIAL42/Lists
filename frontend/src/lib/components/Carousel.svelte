@@ -34,7 +34,7 @@
                 style="width: 100%; height: 100%; background-color: #00000077;"
                 onclick={() =>
                     container.scrollBy({
-                        left: 300,
+                        left: 600,
                         behavior: "smooth",
                     })}
             >
@@ -48,7 +48,7 @@
                 style="width: 100%; height: 100%; background-color: #00000077;"
                 onclick={() =>
                     container.scrollBy({
-                        left: -300,
+                        left: -600,
                         behavior: "smooth",
                     })}
             >

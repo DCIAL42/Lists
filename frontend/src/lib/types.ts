@@ -72,8 +72,25 @@ export interface TrackingListData {
     count: number;
 }
 
-export interface ProfileData {
-    trackingData: TrackingListData;
-    listsData: ListsPreviewData;
-    userData: UserResponse;
+export type ProfileData =
+    | {
+        self: true
+        trackingData: TrackingListData;
+        listsData: ListsPreviewData;
+        userData: UserResponse;
+    } | {
+        self: false
+        listsData: ListsPreviewData;
+        userData: UserResponse;
+        followData: Follow
+    }
+
+export interface Follow {
+    id?: number
+    followed: boolean
+}
+
+export interface Like {
+    id?: number
+    liked: boolean
 }

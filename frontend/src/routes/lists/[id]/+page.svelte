@@ -11,11 +11,11 @@
     import Editable from "$lib/components/Editable.svelte";
     import Cross from "$lib/icons/Cross.svelte";
     import Heart from "$lib/icons/Heart.svelte";
+    import type { Like } from "$lib/types";
 
     let { data = $bindable() }: { data: PageData } = $props();
 
     let likeCount = $state(data.list.likes);
-    let liked = $state(data.like.liked);
     let showDeleteConfirm = $state(false);
     let errorToast = {
         show: false,
@@ -69,20 +69,19 @@
 
     async function handleLike() {
         let method = "POST";
-        if (liked) {
+        if (data.like.liked) {
             method = "DELETE";
             likeCount--;
         } else {
             likeCount++;
         }
-        liked = !liked;
         const res = await fetch(`/api/lists/${data.list.id}/like`, {
             method: method,
         });
 
-        const body = await res.json();
+        const body: Like = await res.json();
 
-        console.log(body);
+        data = { ...data, like: body };
     }
 </script>
 
@@ -128,7 +127,7 @@
                 </Button>
             {:else}
                 <Button variant="ghost" onclick={handleLike}>
-                    <Heart active={liked} />
+                    <Heart active={data.like.liked} />
                 </Button>
                 <p>{likeCount}</p>
             {/if}
