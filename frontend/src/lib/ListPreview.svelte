@@ -19,7 +19,7 @@
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 10px;
-        width: 300px;
+        width: 275px;
         display: flex;
         flex-direction: column;
         color: var(--primary-foreground-muted);

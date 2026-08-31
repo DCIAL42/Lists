@@ -194,8 +194,8 @@
         flex-direction: column;
         gap: 5px;
         padding: 5px;
-        width: 65vw;
         margin-inline: auto;
+        width: 71vw;
     }
 
     .items {

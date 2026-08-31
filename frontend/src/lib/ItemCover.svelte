@@ -109,7 +109,11 @@
 <div class="cover" {...rest}>
     <img src={item.cover || "https://placehold.co/250"} alt="cover" />
 
-    <div class="hover-actions">
+    <div class="hover details">
+        <p>{item.data.title}</p>
+    </div>
+
+    <div class="hover actions">
         {#if add}
             <Button
                 variant="ghost"
@@ -171,20 +175,34 @@
                 background: rgba(0, 0, 0, 0.2);
             }
 
-            .hover-actions {
+            .hover {
                 display: flex;
                 flex-direction: column;
-                gap: 5px;
-                padding: 5px;
             }
         }
     }
 
-    .hover-actions {
+    .hover {
         position: absolute;
+        display: none;
+        background-color: rgb(from var(--primary) r g b / 40%);
+    }
+
+    .actions {
         top: 0;
         left: 100%;
+        gap: 5px;
         transform: translateX(-100%);
-        display: none;
+    }
+
+    .details {
+        padding: 5px;
+        p {
+            margin: 0;
+        }
+        top: 100%;
+        left: 0;
+        transform: translateY(-100%);
+        color: var(--primary-foreground);
     }
 </style>

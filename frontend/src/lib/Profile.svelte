@@ -3,8 +3,13 @@
     import ListPreview from "./ListPreview.svelte";
     import type { ProfileData } from "./types";
 
-    const { data, loading = false }: { data?: ProfileData; loading?: boolean } =
-        $props();
+    const {
+        data,
+        loading = false,
+    }: {
+        data?: ProfileData;
+        loading?: boolean;
+    } = $props();
 </script>
 
 <div>
