@@ -13,6 +13,7 @@ import (
 	"github.com/DCIAL42/lists/internals/search"
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
+	"github.com/DCIAL42/lists/social/follow"
 	"github.com/DCIAL42/lists/social/like"
 	"github.com/DCIAL42/lists/social/review"
 	"github.com/DCIAL42/lists/tracking"
@@ -59,7 +60,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&lists.List{},
 		&lists.ListItem{},
 		&cmn.TrackingItem{},
-		&users.Following{},
+		&follow.Follow{},
 		&review.Review{},
 		&music.Album{},
 		&cmn.Like{},
@@ -86,6 +87,11 @@ func SetupRouter() (*gin.Engine, error) {
 	likeGroup := api.Group("/like")
 	likeService := like.NewService(db)
 	likeService.SetupRoutes(likeGroup)
+
+	followGroup := api.Group("/follow")
+	followService := follow.NewService(db)
+	followService.SetupRoutes(followGroup)
+	followService.SetupUserRoutes(api.Group("/:username"))
 
 	listGroup := api.Group("/lists")
 	listService := lists.NewService(db, likeService, clients)

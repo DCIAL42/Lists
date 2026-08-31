@@ -61,15 +61,3 @@ func (s *Service) getAllUsers() ([]UserResponse, error) {
 	}
 	return res, err
 }
-
-func (s *Service) newFollowing(follower, followed string) (Following, error) {
-	res := Following{Follower: follower, Followed: followed}
-
-	return res, s.DB.Create(&res).Error
-}
-
-func (s *Service) getFollowing(id string) (res []Following, err error) {
-	res = make([]Following, 0)
-	result := s.DB.Where("followed = ?", id).Find(&res)
-	return res, result.Error
-}

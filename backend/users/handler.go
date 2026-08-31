@@ -32,25 +32,6 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 	protected := r.Group("/")
 	protected.Use(middleware.RequireUser())
 
-	protected.POST("/follow", func(c *gin.Context) {
-		fromID := c.MustGet("userID").(string)
-
-		username := c.Param("username")
-		to, err := GetUserByUsername(username)
-		if err != nil {
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		}
-
-		res, err := s.newFollowing(fromID, to.ID)
-
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-
-		c.IndentedJSON(http.StatusOK, res)
-	})
-
 	r.GET("/", func(c *gin.Context) {
 		username := c.Param("username")
 		user, err := GetUserByUsername(username)
@@ -58,19 +39,5 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		}
 		c.IndentedJSON(http.StatusOK, UserResponse{ID: user.ID, Username: *user.Username})
-	})
-
-	r.GET("/following", func(c *gin.Context) {
-		username := c.Param("username")
-		user, err := GetUserByUsername(username)
-		if err != nil {
-			c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		}
-		res, err := s.getFollowing(user.ID)
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-		c.IndentedJSON(http.StatusOK, res)
 	})
 }
