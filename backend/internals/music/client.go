@@ -66,6 +66,10 @@ func (a Album) GetExternalID() string {
 	return a.ExternalID
 }
 
+func (a Album) GetModel() cmn.Model {
+	return a.Model
+}
+
 func (a *Album) toMediaItem() cmn.MediaItem {
 	return cmn.MediaItem{
 		Type:       cmn.TypeAlbum,

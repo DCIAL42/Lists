@@ -2,9 +2,13 @@ package movies
 
 import (
 	"net/http"
+
+	"github.com/DCIAL42/lists/cmn"
+	"gorm.io/gorm"
 )
 
 type Client struct {
+	*gorm.DB
 	httpClient   *http.Client
 	baseURL      string
 	searchPath   string
@@ -23,8 +27,16 @@ type MovieResponse struct {
 	Poster     string  `json:"poster_path"`
 }
 
-type Movie struct {
+type MovieData struct {
 	Title      string  `json:"title"`
 	Popularity float32 `json:"popularity"`
 	Poster     string  `json:"cover"`
+}
+
+type Movie struct {
+	cmn.Model
+	ExternalID int `gorm:"uniqueIndex;not null"`
+	Title      string
+	Popularity float32
+	Poster     string
 }

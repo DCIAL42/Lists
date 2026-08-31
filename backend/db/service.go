@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/DCIAL42/lists/cmn"
 	"gorm.io/gorm"
@@ -80,6 +81,7 @@ func (db *DBService) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResp
 
 type ExternalItem interface {
 	GetExternalID() string
+	GetModel() cmn.Model
 }
 
 func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
@@ -87,6 +89,12 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
 	result := DB.Where("external_id = ?", (*dst).GetExternalID()).First(&existing)
 
 	if result.Error == nil {
+		if time.Since(existing.GetModel().UpdatedAt) > time.Hour*24*30 {
+			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
+				return false, err
+			}
+			return true, nil
+		}
 		return false, nil
 	}
 

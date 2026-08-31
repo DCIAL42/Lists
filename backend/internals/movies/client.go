@@ -8,12 +8,56 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 
 	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
 	"github.com/DCIAL42/lists/internals/client"
+	"gorm.io/gorm"
 )
+
+func (r *MovieResponse) toMovie() *Movie {
+	return &Movie{
+		ExternalID: r.ExternalID,
+		Title:      r.Title,
+		Popularity: r.Popularity,
+		Poster:     "https://image.tmdb.org/t/p/w500" + r.Poster,
+	}
+}
+
+func (r *MovieResponse) toMediaItem() cmn.MediaItem {
+	return cmn.MediaItem{
+		Type:       cmn.TypeMovie,
+		ExternalID: strconv.Itoa(r.ExternalID),
+		Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
+		Data: MovieData{
+			Title:      r.Title,
+			Popularity: r.Popularity,
+		},
+	}
+}
+
+func (m *Movie) toMediaItem() cmn.MediaItem {
+	return cmn.MediaItem{
+		Type:       cmn.TypeMovie,
+		ExternalID: strconv.Itoa(m.ExternalID),
+		Cover:      m.Poster,
+		Data: MovieData{
+			Title:      m.Title,
+			Popularity: m.Popularity,
+		},
+	}
+}
+
+func (m Movie) GetExternalID() string {
+	return strconv.Itoa(m.ExternalID)
+}
+
+func (m Movie) GetModel() cmn.Model {
+	return m.Model
+}
 
 func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
 	var data Response
@@ -32,15 +76,9 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 	results := make([]cmn.MediaItem, 0, len(data.Results))
 
 	for _, r := range data.Results {
-		results = append(results, cmn.MediaItem{
-			Type:       cmn.TypeMovie,
-			ExternalID: strconv.Itoa(r.ExternalID),
-			Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
-			Data: Movie{
-				Title:      r.Title,
-				Popularity: r.Popularity,
-			},
-		})
+		movie := r.toMovie()
+		db.TrySaveItem(c.DB, movie)
+		results = append(results, r.toMediaItem())
 	}
 
 	return cmn.SearchResult{Items: results}, nil
@@ -57,14 +95,19 @@ func (c *Client) BuildURL(params map[string]string) string {
 	return url
 }
 
-func NewMovieClient(httpClient *http.Client) *Client {
+func NewMovieClient(httpClient *http.Client, DB *gorm.DB) *Client {
+	token, ok := os.LookupEnv("TMDB_TOKEN")
+	if !ok {
+		panic("tmdb token not found")
+	}
 	return &Client{
+		DB,
 		httpClient,
 		"https://api.themoviedb.org/3",
 		"/search/movie",
 		map[string]string{},
 		map[string]string{
-			"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzYmFmYjliYjM1MjA2ZDQ0ZGNhYjU5MTc4NDNlYzdmNyIsIm5iZiI6MTc3MTI1OTA3OC40MjQsInN1YiI6IjY5OTM0NGM2MDZkZDViY2UxMzI4N2QzNSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Rx24Tn9as1XcsOypTv_Ufdx1_IWVAUfVL8RA4cIhBi0",
+			"Authorization": "Bearer " + token,
 			"Accept":        "application/json",
 		},
 	}
@@ -107,6 +150,11 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 }
 
 func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
+	var item Movie
+	ok := db.TryGetItem(c.DB, ID, &item)
+	if ok {
+		return item.toMediaItem(), nil
+	}
 	if len(ID) == 0 {
 		err = errors.ErrUnsupported
 		return
@@ -134,7 +182,7 @@ func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 		Type:       cmn.TypeMovie,
 		ExternalID: strconv.Itoa(movie.ExternalID),
 		Cover:      "https://image.tmdb.org/t/p/w500" + movie.Poster,
-		Data: Movie{
+		Data: MovieData{
 			Title:      movie.Title,
 			Popularity: movie.Popularity,
 		},

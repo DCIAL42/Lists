@@ -63,12 +63,13 @@ func SetupRouter() (*gin.Engine, error) {
 		&follow.Follow{},
 		&review.Review{},
 		&music.Album{},
+		&movies.Movie{},
 		&cmn.Like{},
 	)
 
 	clients := map[cmn.MediaType]cmn.Client{
 		cmn.TypeAlbum: music.NewMusicClient(httpClient, db),
-		cmn.TypeMovie: movies.NewMovieClient(httpClient),
+		cmn.TypeMovie: movies.NewMovieClient(httpClient, db),
 	}
 
 	if err != nil {
