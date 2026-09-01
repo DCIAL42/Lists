@@ -13,16 +13,20 @@
     import { error } from "@sveltejs/kit";
     import Plus from "./icons/Plus.svelte";
     import type { HTMLAttributes } from "svelte/elements";
+    import Menu from "./icons/Menu.svelte";
+    import { tick } from "svelte";
 
     let {
         item = $bindable(),
         add = false,
+        rating,
         onAddClick = () => {},
         onTrackingChange = () => {},
         ...rest
     }: {
         item: MediaItem;
         add?: boolean;
+        rating?: number;
         onAddClick?: (item: MediaItem) => void;
         onTrackingChange?: (from: TrackingStatus, to: TrackingStatus) => void;
     } & HTMLAttributes<HTMLDivElement> = $props();
@@ -31,6 +35,7 @@
     const userId = $derived(ctx.auth.userId);
 
     let tracking = $derived(item.tracking?.status);
+    let showMenu = $state(false);
 
     async function removeTracking() {
         if (item.tracking === undefined) {
@@ -71,7 +76,7 @@
 
     async function newTracking(status: TrackingStatus) {
         const payload: TrackingPayload = {
-            external_id: item.external_id,
+            media_id: item.id,
             status: status,
             type: item.type,
         };
@@ -104,16 +109,60 @@
         }
         tracking = tracking === status ? undefined : status;
     }
+
+    let menuContainer: HTMLDivElement;
 </script>
 
 <div class="cover" {...rest}>
     <img src={item.cover || "https://placehold.co/250"} alt="cover" />
 
     <div class="hover details">
-        <p>{item.data.title}</p>
+        <p>{item.title}</p>
+    </div>
+
+    <div
+        class="menu"
+        bind:this={menuContainer}
+        tabindex="-1"
+        onfocusout={() => {
+            showMenu = false;
+        }}
+    >
+        {#if showMenu}
+            <div class="rating">
+                <input
+                    type="range"
+                    bind:value={item.rating.rating}
+                    min={0}
+                    max={10}
+                    defaultvalue={0}
+                    step={0.5}
+                />
+                <span>{rating}</span>
+            </div>
+            {#each ["Add to backlog", "Add to paused", "Add to done", "Add review"] as text}
+                <Button
+                    variant="ghost"
+                    style="border-top: 1px solid var(--primary-foreground); "
+                >
+                    {text}
+                </Button>
+            {/each}
+        {/if}
     </div>
 
     <div class="hover actions">
+        <Button
+            variant="ghost"
+            text="light"
+            onclick={async () => {
+                showMenu = true;
+                await tick();
+                menuContainer.focus();
+            }}
+        >
+            <Menu />
+        </Button>
         {#if add}
             <Button
                 variant="ghost"
@@ -204,5 +253,31 @@
         left: 0;
         transform: translateY(-100%);
         color: var(--primary-foreground);
+    }
+
+    .menu {
+        position: absolute;
+        flex-direction: column;
+        top: 0;
+        left: 100%;
+        width: 200px;
+        background-color: var(--skeleton-base);
+
+        .rating {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+
+            input {
+                width: 100%;
+            }
+
+            span {
+                width: 30px;
+                text-align: right;
+            }
+        }
     }
 </style>

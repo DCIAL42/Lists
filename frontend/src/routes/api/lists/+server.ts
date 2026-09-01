@@ -1,15 +1,16 @@
 import type { RequestHandler } from "./$types";
-import type { List, ListPayload } from "$lib/types";
+import type { List, ListItem, ListPayload } from "$lib/types";
 import { json } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     const token = await locals.auth().getToken()
     let list: List = await request.json()
+    const listItems: ListItem[] = list.items.map(item => ({ media_id: item.id, type: item.type }))
 
     let body: ListPayload = {
         title: list.title,
-        items: list.items.map(item => ({ ...item, external_id: String(item.external_id) }))
+        items: listItems
     }
 
     const backendURL = env.BACKEND_URL

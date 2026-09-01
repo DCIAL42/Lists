@@ -70,7 +70,7 @@
                     {#if numbered}
                         {index + 1}.
                     {/if}
-                    {item.data.title}
+                    {item.title}
                 </h1>
                 {#if isAlbum(item)}
                     <p class="subtitle">{item.data.artist}</p>

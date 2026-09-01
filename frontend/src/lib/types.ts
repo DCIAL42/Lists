@@ -6,11 +6,10 @@ export type SearchResponse = {
 };
 
 export interface Movie {
-    title: string
+    popularity: number
 }
 
 export interface Album {
-    title: string
     artist: string
 }
 
@@ -20,15 +19,17 @@ export interface TrackingItem {
 }
 
 export interface MediaItem {
+    id: number
     type: MediaType
-    external_id: string
+    title: string
     cover: string
     data: Movie | Album
     tracking?: TrackingItem
+    rating: Rating
 }
 
 export interface ListItem {
-    external_id: string
+    media_id: number
     type: MediaType
 }
 
@@ -50,7 +51,7 @@ export interface ListPayload {
 }
 
 export interface TrackingPayload {
-    external_id: string
+    media_id: number
     status: TrackingStatus
     type: MediaType
 }
@@ -93,4 +94,9 @@ export interface Follow {
 export interface Like {
     id?: number
     liked: boolean
+}
+
+export interface Rating {
+    id?: number
+    rating: number
 }

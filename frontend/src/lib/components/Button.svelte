@@ -25,9 +25,8 @@
         text-decoration: none;
         color: inherit;
         background-color: var(--primary);
-        padding: 8px;
+        padding: 5px;
         border: none;
-        /* border: 1px solid var(--border); */
         transition: background-color 0.2s ease;
         cursor: pointer;
     }

@@ -19,7 +19,7 @@
     } = $props();
 
     function tag_items(items: MediaItem[]) {
-        return items.map((item, i) => ({ id: String(i), ...item }));
+        return items.map((item) => ({ ...item, id: String(item.id) }));
     }
 
     function handleDragEnd(e: SortableList.RootEvents["ondragend"]) {
@@ -54,7 +54,7 @@
             {#each tag_items(items) as item, index (index)}
                 <SortableList.Item {...item} {index}>
                     <ItemCard
-                        {item}
+                        bind:item={items[index]}
                         {index}
                         {editing}
                         dragging={dragIdx === index}
@@ -66,9 +66,9 @@
             {/each}
         </SortableList.Root>
     {:else}
-        {#each tag_items(items) as item, index (index)}
+        {#each tag_items(items) as _, index (index)}
             <ItemCard
-                {item}
+                bind:item={items[index]}
                 {index}
                 {editing}
                 dragging={dragIdx === index}
