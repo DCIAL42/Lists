@@ -25,15 +25,29 @@ const (
 
 type TrackingItem struct {
 	Model
-	UserID     string         `json:"user_id"`
-	Status     TrackingStatus `json:"status"`
-	Type       MediaType      `json:"type"`
-	ExternalID string         `json:"external_id"`
+	UserID  string         `json:"user_id"`
+	Status  TrackingStatus `json:"status"`
+	Type    MediaType      `json:"type"`
+	MediaID uint           `json:"media_id"`
+
+	Media Media `gorm:"foreignKey:MediaID"`
 }
 
 type TrackingResponse struct {
 	ID     uint           `json:"id,omitempty"`
 	Status TrackingStatus `json:"status,omitempty"`
+}
+
+type Rating struct {
+	Model
+	UserID  string `json:"user_id"`
+	MediaID uint   `json:"media_id"`
+	Rating  uint8  `json:"rating"`
+}
+
+type RatingResponse struct {
+	ID     uint  `json:"id,omitempty"`
+	Rating uint8 `json:"rating"`
 }
 
 type Model struct {
@@ -48,6 +62,7 @@ type MediaItem struct {
 	ExternalID string           `json:"external_id"`
 	Data       any              `json:"data"`
 	Tracking   TrackingResponse `json:"tracking,omitempty"`
+	Rating     RatingResponse   `json:"rating,omitempty"`
 	Cover      string           `json:"cover"`
 }
 
@@ -72,17 +87,28 @@ type Media struct {
 	Reviews    []Review `gorm:"foreignKey:MediaID"`
 }
 
+type MediaResponse struct {
+	ID       uint             `json:"id"`
+	Type     MediaType        `json:"type"`
+	Title    string           `json:"title"`
+	Cover    string           `json:"cover"`
+	Data     any              `json:"data"`
+	Tracking TrackingResponse `json:"tracking"`
+	Rating   RatingResponse   `json:"rating"`
+}
+
 type Client interface {
 	BuildURL(map[string]string) string
 	TryRequest(context.Context, string) (*http.Response, error)
 	ReadToSearchResult(*http.Response) (SearchResult, error)
 	Search(context.Context, map[string]string) (SearchResult, error)
 	GetItem(string) (MediaItem, error)
+	GetMedia(uint) (MediaResponse, error)
 }
 
 type SearchResult struct {
-	Next  string      `json:"next"`
-	Items []MediaItem `json:"items"`
+	Next  string          `json:"next"`
+	Items []MediaResponse `json:"items"`
 }
 
 type Like struct {

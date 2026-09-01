@@ -72,7 +72,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 	protected.POST("/", func(c *gin.Context) {
 		userID := c.MustGet("userID").(string)
 
-		var body List
+		var body ListRequest
 
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -89,9 +89,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		body.UserID = userID
-
-		list, err := s.createList(body)
+		list, err := s.createList(body, userID)
 
 		if err != nil {
 			cmn.HandleError(c, err)

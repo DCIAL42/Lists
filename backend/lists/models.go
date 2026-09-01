@@ -4,16 +4,27 @@ import (
 	"github.com/DCIAL42/lists/cmn"
 )
 
+type ListItemRequest struct {
+	Type    cmn.MediaType `json:"type"`
+	MediaID uint          `json:"media_id"`
+}
+
 type ListItem struct {
 	cmn.Model
-	ListID     uint
-	Type       cmn.MediaType `json:"type"`
-	ExternalID string        `json:"external_id"`
+	ListID  uint
+	MediaID uint `json:"media_id"`
+
+	Media cmn.Media `gorm:"foreignKey:MediaID"`
 }
 
 type UpdateListRequest struct {
 	Title string     `json:"title"`
 	Items []ListItem `json:"items"`
+}
+
+type ListRequest struct {
+	Title string            `json:"title"`
+	Items []ListItemRequest `json:"items"`
 }
 
 type List struct {
@@ -35,7 +46,7 @@ type ListMeta struct {
 
 type ListResponse struct {
 	ListMeta
-	Items []cmn.MediaItem `json:"items"`
+	Items []cmn.MediaResponse `json:"items"`
 }
 
 type ListsPreviewResponse struct {

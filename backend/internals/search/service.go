@@ -18,12 +18,12 @@ func NewSearchService(clients map[cmn.MediaType]cmn.Client, db *gorm.DB) Service
 	return Service{clients, db}
 }
 
-func AddTrackingInfo(db *gorm.DB, items []cmn.MediaItem, userID string) (res []cmn.MediaItem, err error) {
-	res = make([]cmn.MediaItem, 0, len(items))
+func AddTrackingInfo(db *gorm.DB, items []cmn.MediaResponse, userID string) (res []cmn.MediaResponse, err error) {
+	res = make([]cmn.MediaResponse, 0, len(items))
 
 	for _, item := range items {
 		var tracking cmn.TrackingItem
-		db.Where("external_id = ? AND user_id = ?", item.ExternalID, userID).First(&tracking)
+		db.Where("media_id = ? AND user_id = ?", item.ID, userID).Preload("Media").First(&tracking)
 
 		item.Tracking = cmn.TrackingResponse{
 			ID:     tracking.ID,

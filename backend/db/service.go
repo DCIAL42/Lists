@@ -35,6 +35,21 @@ func (s *DBService) ResolveItem(t cmn.MediaType, externalID string) (cmn.MediaIt
 	return c.GetItem(externalID)
 }
 
+func (s *DBService) ResolveMedia(mediaID uint) (cmn.MediaResponse, error) {
+	var media cmn.Media
+	if err := s.DB.Where("id = ?", mediaID).First(&media).Error; err != nil {
+		return cmn.MediaResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
+	}
+	t := media.Type
+	c, ok := s.Clients[t]
+
+	if !ok {
+		return cmn.MediaResponse{}, errors.New("Invalid item type, unable to resolve.")
+	}
+
+	return c.GetMedia(mediaID)
+}
+
 func NewDBService(db *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*ServiceConfig) *DBService {
 	var cfg *ServiceConfig
 
@@ -79,18 +94,49 @@ func (db *DBService) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResp
 	}, nil
 }
 
+func (db *DBService) GetRating(req cmn.Rating) (res cmn.RatingResponse, err error) {
+	var r cmn.Rating
+	err = db.DB.Where(req).First(&r).Error
+
+	res = cmn.RatingResponse{
+		ID:     r.ID,
+		Rating: r.Rating,
+	}
+
+	return
+}
+
 type ExternalItem interface {
 	GetExternalID() string
 	GetModel() cmn.Model
 }
 
-func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
+func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
+	var media cmn.Media
+
+	mediaResult := DB.Where("external_id = ?", dst.GetExternalID()).First(&media)
+
+	if mediaResult.Error != nil && !errors.Is(mediaResult.Error, gorm.ErrRecordNotFound) {
+		return false, mediaResult.Error
+	}
+
+	if mediaResult.Error != nil && errors.Is(mediaResult.Error, gorm.ErrRecordNotFound) {
+		if err := DB.Create(dst).Error; err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
 	var existing T
-	result := DB.Where("external_id = ?", (*dst).GetExternalID()).Preload("Media").First(&existing)
+	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
 		if time.Since(existing.GetModel().UpdatedAt) > time.Second {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
+				return false, err
+			}
+
+			if err := DB.Preload("Media").First(dst, existing.GetModel().ID).Error; err != nil {
 				return false, err
 			}
 			return true, nil

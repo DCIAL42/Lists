@@ -56,6 +56,11 @@ func toReviewResponse(r cmn.Review) ReviewResponse {
 func (s *Service) createReview(userID string, req ReviewRequest) (res ReviewResponse, err error) {
 	review, err := s.parseReviewRequest(req, userID)
 
+	if err != nil {
+		err = &cmn.HttpError{Code: http.StatusNotImplemented, Message: "test"}
+		return
+	}
+
 	result := s.DB.Create(&review)
 
 	if result.Error != nil {

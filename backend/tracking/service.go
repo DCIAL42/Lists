@@ -82,6 +82,7 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 	var count int64
 	result := s.DB.
 		Model(&cmn.TrackingItem{}).
+		Preload("Media").
 		Where(
 			"user_id = ? AND status = ? AND type IN ?",
 			pat.UserID,
@@ -99,21 +100,21 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 		return
 	}
 
-	resolved := make([]cmn.MediaItem, 0, len(list))
+	resolved := make([]cmn.MediaResponse, 0, len(list))
 
 	for _, item := range list {
-		var resItem cmn.MediaItem
-		resItem, err = s.ResolveItem(item.Type, item.ExternalID)
+		var resItem cmn.MediaResponse
+		resItem, err = s.ResolveMedia(item.MediaID)
 
 		if err != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 			return
 		}
 
-		resItem.Tracking = cmn.TrackingResponse{
-			ID:     item.ID,
-			Status: item.Status,
-		}
+		// resItem.Tracking = cmn.TrackingResponse{
+		// 	ID:     item.ID,
+		// 	Status: item.Status,
+		// }
 
 		resolved = append(resolved, resItem)
 	}

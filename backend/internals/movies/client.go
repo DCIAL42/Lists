@@ -18,8 +18,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func (r *MovieResponse) toMovie() *Movie {
-	return &Movie{
+func (r *MovieResponse) toMovie() Movie {
+	return Movie{
 		Popularity: r.Popularity,
 		Media: cmn.Media{
 			Type:       cmn.TypeMovie,
@@ -42,6 +42,18 @@ func (r *MovieResponse) toMediaItem() cmn.MediaItem {
 	}
 }
 
+func (m *Movie) toMediaResponse() cmn.MediaResponse {
+	return cmn.MediaResponse{
+		ID:    m.MediaID,
+		Type:  cmn.TypeMovie,
+		Title: m.Media.Title,
+		Cover: m.Media.Cover,
+		Data: MovieData{
+			Popularity: m.Popularity,
+		},
+	}
+}
+
 func (m *Movie) toMediaItem() cmn.MediaItem {
 	return cmn.MediaItem{
 		Type:       cmn.TypeMovie,
@@ -52,6 +64,10 @@ func (m *Movie) toMediaItem() cmn.MediaItem {
 			Popularity: m.Popularity,
 		},
 	}
+}
+
+func (m Movie) GetID() uint {
+	return m.ID
 }
 
 func (m Movie) GetExternalID() string {
@@ -76,12 +92,12 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 		return data.Results[i].Popularity > data.Results[j].Popularity
 	})
 
-	results := make([]cmn.MediaItem, 0, len(data.Results))
+	results := make([]cmn.MediaResponse, 0, len(data.Results))
 
 	for _, r := range data.Results {
-		movie := r.toMovie()
-		db.TrySaveItem(c.DB, movie)
-		results = append(results, r.toMediaItem())
+		var movie Movie = r.toMovie()
+		db.TrySaveItem(c.DB, &movie)
+		results = append(results, movie.toMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: results}, nil
@@ -190,4 +206,14 @@ func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 			Popularity: movie.Popularity,
 		},
 	}, nil
+}
+
+func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
+	var item Movie
+	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+		return
+	}
+	return item.toMediaResponse(), nil
 }

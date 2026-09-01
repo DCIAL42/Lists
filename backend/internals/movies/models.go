@@ -35,7 +35,7 @@ type MovieData struct {
 
 type Movie struct {
 	cmn.Model
-	MediaID    uint
+	MediaID    uint      `gorm:"uniqueIndex;not null"`
 	Media      cmn.Media `gorm:"foreignKey:MediaID"`
 	Popularity float32
 }

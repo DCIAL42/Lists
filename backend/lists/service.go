@@ -29,11 +29,11 @@ func NewService(DB *gorm.DB, likeService *like.Service, clients map[cmn.MediaTyp
 }
 
 func (s *Service) toListResponse(list List, userID string) (res ListResponse, err error) {
-	resolvedItems := make([]cmn.MediaItem, 0, len(list.Items))
+	resolvedItems := make([]cmn.MediaResponse, 0, len(list.Items))
 
 	for _, item := range list.Items {
-		var resolvedItem cmn.MediaItem
-		resolvedItem, err = s.ResolveItem(item.Type, item.ExternalID)
+		var resolvedItem cmn.MediaResponse
+		resolvedItem, err = s.ResolveMedia(item.MediaID)
 
 		if err != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
@@ -41,13 +41,14 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 		}
 
 		if userID != "" {
-			resolvedItem.Tracking, err = s.GetTrackingItem(cmn.TrackingItem{UserID: userID, ExternalID: resolvedItem.ExternalID})
+			resolvedItem.Tracking, err = s.GetTrackingItem(cmn.TrackingItem{UserID: userID, MediaID: resolvedItem.ID})
+			resolvedItem.Rating, err = s.GetRating(cmn.Rating{UserID: userID, MediaID: resolvedItem.ID})
 		}
 
 		resolvedItems = append(resolvedItems, resolvedItem)
 	}
 
-	userDetails, err := users.GetUserDetails(list.UserID)
+	userDetails, err := users.GetUserDetails(userID)
 
 	if err != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Failed to fetch user details"}
@@ -67,9 +68,24 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 	}, nil
 }
 
-func (s *Service) createList(list List) (res ListResponse, err error) {
-	first, err := s.ResolveItem(list.Items[0].Type, list.Items[0].ExternalID)
-	list.Cover = first.Cover
+func (s *Service) createList(req ListRequest, userID string) (res ListResponse, err error) {
+	var x cmn.Media
+	s.DB.Where("id = ?", req.Items[0].MediaID).First(&x)
+
+	// var first cmn.MediaResponse
+	// first, err = s.ResolveMedia(req.Items[0].Type, req.Items[0].ExternalID)
+	items := make([]ListItem, 0, len(req.Items))
+	for _, item := range req.Items {
+		items = append(items, ListItem{
+			MediaID: item.MediaID,
+		})
+	}
+	list := List{
+		UserID: userID,
+		Title:  req.Title,
+		Items:  items,
+	}
+	list.Cover = x.Cover
 	result := s.DB.Create(&list)
 
 	if result.Error != nil {
@@ -77,7 +93,7 @@ func (s *Service) createList(list List) (res ListResponse, err error) {
 		return
 	}
 
-	return s.toListResponse(list, list.UserID)
+	return s.toListResponse(list, userID)
 }
 
 func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
@@ -115,7 +131,7 @@ func (s *Service) updateList(id uint, userID string, req UpdateListRequest) (res
 		return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 	}
 
-	first, _ := s.ResolveItem(req.Items[0].Type, req.Items[0].ExternalID)
+	first, _ := s.ResolveItem(req.Items[0].Media.Type, req.Items[0].Media.ExternalID)
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		if req.Title != "" {

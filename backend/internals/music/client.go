@@ -45,6 +45,18 @@ func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
 	}
 }
 
+func (a *Album) toMediaResponse() cmn.MediaResponse {
+	return cmn.MediaResponse{
+		ID:    a.MediaID,
+		Type:  a.Media.Type,
+		Title: a.Media.Title,
+		Cover: a.Media.Cover,
+		Data: AlbumData{
+			Artist: a.Artist,
+		},
+	}
+}
+
 func (r *AlbumResponse) toAlbumData() AlbumData {
 	var artist string
 	if len(r.Artists) > 0 {
@@ -60,6 +72,10 @@ func (r *AlbumResponse) toAlbumData() AlbumData {
 		Artist: artist,
 		Cover:  cover,
 	}
+}
+
+func (a Album) GetID() uint {
+	return a.ID
 }
 
 func (a Album) GetExternalID() string {
@@ -94,11 +110,11 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 
 	defer resp.Body.Close()
 
-	albums := make([]cmn.MediaItem, 0, len(data.Albums.Items))
+	albums := make([]cmn.MediaResponse, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
 		albumdata := r.toAlbumData()
-		album := &Album{
+		album := Album{
 			Artist: albumdata.Artist,
 			Media: cmn.Media{
 				Type:       cmn.TypeAlbum,
@@ -107,8 +123,8 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 				Cover:      albumdata.Cover,
 			},
 		}
-		db.TrySaveItem(c.DB, album)
-		albums = append(albums, r.toMediaItem())
+		db.TrySaveItem(c.DB, &album)
+		albums = append(albums, album.toMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: albums}, nil
@@ -249,4 +265,14 @@ func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
 	defer resp.Body.Close()
 
 	return album.toMediaItem(), nil
+}
+
+func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
+	var item Album
+	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+		return
+	}
+	return item.toMediaResponse(), nil
 }

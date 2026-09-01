@@ -16,6 +16,6 @@ type TrackingItemResponse struct {
 }
 
 type TrackingListResponse struct {
-	Count int             `json:"count"`
-	Items []cmn.MediaItem `json:"items"`
+	Count int                 `json:"count"`
+	Items []cmn.MediaResponse `json:"items"`
 }

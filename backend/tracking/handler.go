@@ -34,7 +34,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		var test cmn.TrackingItem
 
-		result := s.DB.Unscoped().Where("external_id = ? AND user_id = ?", item.ExternalID, userID).First(&test)
+		result := s.DB.Unscoped().Where("media_id = ? AND user_id = ?", item.MediaID, userID).First(&test)
 
 		if result.Error == nil {
 			result := s.DB.Unscoped().Model(&test).Updates(map[string]any{
