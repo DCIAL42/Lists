@@ -19,20 +19,22 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db
 	}
 }
 
-func parseReviewRequest(req ReviewRequest, userID string) (Review, error) {
+func (s *Service) parseReviewRequest(req ReviewRequest, userID string) (cmn.Review, error) {
 	if req.Rating > 10 {
-		return Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid rating"}
+		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid rating"}
 	}
-	if req.MediaID == "" {
-		return Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid media id"}
+	if req.ExternalID == "" {
+		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid media id"}
 	}
 	d, err := time.Parse("02-01-2006", req.Date)
 	if err != nil {
-		return Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid date"}
+		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid date"}
 	}
-	return Review{
+	var item cmn.Media
+	db.TryGetItem(s.DB, req.ExternalID, &item)
+	return cmn.Review{
 		UserID:  userID,
-		MediaID: req.MediaID,
+		MediaID: item.ID,
 		Rating:  req.Rating,
 		Body:    req.Body,
 		Rewatch: req.Rewatch,
@@ -40,21 +42,19 @@ func parseReviewRequest(req ReviewRequest, userID string) (Review, error) {
 	}, nil
 }
 
-func toReviewResponse(r Review) ReviewResponse {
+func toReviewResponse(r cmn.Review) ReviewResponse {
 	return ReviewResponse{
-		ID: r.ID,
-		ReviewRequest: ReviewRequest{
-			r.MediaID,
-			r.Rating,
-			r.Body,
-			r.Rewatch,
-			r.Date.Format("02-01-2006"),
-		},
+		ID:         r.ID,
+		ExternalID: r.Media.ExternalID,
+		Rating:     r.Rating,
+		Body:       r.Body,
+		Rewatch:    r.Rewatch,
+		Date:       r.Date.Format("02-01-2006"),
 	}
 }
 
 func (s *Service) createReview(userID string, req ReviewRequest) (res ReviewResponse, err error) {
-	review, err := parseReviewRequest(req, userID)
+	review, err := s.parseReviewRequest(req, userID)
 
 	result := s.DB.Create(&review)
 
@@ -69,7 +69,7 @@ func (s *Service) createReview(userID string, req ReviewRequest) (res ReviewResp
 }
 
 func (s *Service) getAllReviews() (res []ReviewResponse, err error) {
-	reviews := make([]Review, 0)
+	reviews := make([]cmn.Review, 0)
 	result := s.DB.Find(&reviews)
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}

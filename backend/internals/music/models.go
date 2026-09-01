@@ -42,8 +42,7 @@ type AlbumData struct {
 
 type Album struct {
 	cmn.Model
-	ExternalID string `gorm:"uniqueIndex;not null"`
-	Title      string
-	Artist     string
-	Cover      string
+	MediaID uint
+	Media   cmn.Media `gorm:"foreignKey:MediaID"`
+	Artist  string
 }

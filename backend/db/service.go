@@ -86,10 +86,10 @@ type ExternalItem interface {
 
 func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
 	var existing T
-	result := DB.Where("external_id = ?", (*dst).GetExternalID()).First(&existing)
+	result := DB.Where("external_id = ?", (*dst).GetExternalID()).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if time.Since(existing.GetModel().UpdatedAt) > time.Hour*24*30 {
+		if time.Since(existing.GetModel().UpdatedAt) > time.Second {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
 				return false, err
 			}
@@ -110,7 +110,7 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst *T) (bool, error) {
 }
 
 func TryGetItem(DB *gorm.DB, externalID string, dst any) bool {
-	result := DB.Where("external_id = ?", externalID).First(dst)
+	result := DB.Where("external_id = ?", externalID).Preload("Media").First(dst)
 	if result.Error != nil {
 		return false
 	}

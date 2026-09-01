@@ -63,7 +63,7 @@ func (r *AlbumResponse) toAlbumData() AlbumData {
 }
 
 func (a Album) GetExternalID() string {
-	return a.ExternalID
+	return a.Media.ExternalID
 }
 
 func (a Album) GetModel() cmn.Model {
@@ -73,10 +73,10 @@ func (a Album) GetModel() cmn.Model {
 func (a *Album) toMediaItem() cmn.MediaItem {
 	return cmn.MediaItem{
 		Type:       cmn.TypeAlbum,
-		ExternalID: a.ExternalID,
-		Cover:      a.Cover,
+		ExternalID: a.Media.ExternalID,
+		Cover:      a.Media.Cover,
 		Data: AlbumData{
-			Title:  a.Title,
+			Title:  a.Media.Title,
 			Artist: a.Artist,
 		},
 	}
@@ -99,10 +99,13 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 	for _, r := range data.Albums.Items {
 		albumdata := r.toAlbumData()
 		album := &Album{
-			ExternalID: r.ExternalID,
-			Title:      r.Title,
-			Artist:     albumdata.Artist,
-			Cover:      albumdata.Cover,
+			Artist: albumdata.Artist,
+			Media: cmn.Media{
+				Type:       cmn.TypeAlbum,
+				ExternalID: r.ExternalID,
+				Title:      r.Title,
+				Cover:      albumdata.Cover,
+			},
 		}
 		db.TrySaveItem(c.DB, album)
 		albums = append(albums, r.toMediaItem())

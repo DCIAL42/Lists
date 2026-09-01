@@ -36,6 +36,13 @@ type TrackingResponse struct {
 	Status TrackingStatus `json:"status,omitempty"`
 }
 
+type Model struct {
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty"`
+}
+
 type MediaItem struct {
 	Type       MediaType        `json:"type"`
 	ExternalID string           `json:"external_id"`
@@ -44,11 +51,25 @@ type MediaItem struct {
 	Cover      string           `json:"cover"`
 }
 
-type Model struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty"`
+type Review struct {
+	Model
+	UserID  string
+	MediaID uint
+	Rating  uint8
+	Body    string
+	Rewatch bool
+	Date    time.Time
+
+	Media Media `gorm:"foreignKey:MediaID"`
+}
+
+type Media struct {
+	Model
+	ExternalID string `gorm:"uniqueIndex;not null"`
+	Type       MediaType
+	Title      string
+	Cover      string
+	Reviews    []Review `gorm:"foreignKey:MediaID"`
 }
 
 type Client interface {

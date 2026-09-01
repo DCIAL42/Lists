@@ -20,10 +20,13 @@ import (
 
 func (r *MovieResponse) toMovie() *Movie {
 	return &Movie{
-		ExternalID: r.ExternalID,
-		Title:      r.Title,
 		Popularity: r.Popularity,
-		Poster:     "https://image.tmdb.org/t/p/w500" + r.Poster,
+		Media: cmn.Media{
+			Type:       cmn.TypeMovie,
+			ExternalID: strconv.Itoa(r.ExternalID),
+			Title:      r.Title,
+			Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
+		},
 	}
 }
 
@@ -42,17 +45,17 @@ func (r *MovieResponse) toMediaItem() cmn.MediaItem {
 func (m *Movie) toMediaItem() cmn.MediaItem {
 	return cmn.MediaItem{
 		Type:       cmn.TypeMovie,
-		ExternalID: strconv.Itoa(m.ExternalID),
-		Cover:      m.Poster,
+		ExternalID: m.Media.ExternalID,
+		Cover:      m.Media.Cover,
 		Data: MovieData{
-			Title:      m.Title,
+			Title:      m.Media.Title,
 			Popularity: m.Popularity,
 		},
 	}
 }
 
 func (m Movie) GetExternalID() string {
-	return strconv.Itoa(m.ExternalID)
+	return m.Media.ExternalID
 }
 
 func (m Movie) GetModel() cmn.Model {
