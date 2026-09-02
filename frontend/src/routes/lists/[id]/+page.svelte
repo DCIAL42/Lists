@@ -11,7 +11,7 @@
     import Editable from "$lib/components/Editable.svelte";
     import Cross from "$lib/icons/Cross.svelte";
     import Heart from "$lib/icons/Heart.svelte";
-    import type { Like } from "$lib/types";
+    import type { Like, ListPayload } from "$lib/types";
 
     let { data = $bindable() }: { data: PageData } = $props();
 
@@ -45,9 +45,16 @@
     }
 
     async function updateList() {
+        const listPayload: ListPayload = {
+            title: listForm.title,
+            items: listForm.items.map((item) => ({
+                media_id: item.id,
+                type: item.type,
+            })),
+        };
         const res = await fetch(`/api/lists/${data.list.id}`, {
             method: "PATCH",
-            body: JSON.stringify(listForm),
+            body: JSON.stringify(listPayload),
         });
         if (!res.ok) {
             const body: { error: string } = await res.json();

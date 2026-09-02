@@ -155,11 +155,16 @@
         {/if}
     {:else if tab === "tracking" && data?.self}
         <div class="items">
-            {#each data.trackingData.items as item, index}
-                <ItemCard {item} {index} small {onTrackingChange} />
+            {#each data.trackingData.items as _, index}
+                <ItemCard
+                    bind:item={data.trackingData.items[index]}
+                    {index}
+                    small
+                    {onTrackingChange}
+                />
             {/each}
             {#if loading}
-                {#each Array(9) as _}
+                {#each Array(10) as _}
                     <Skeleton height={250} />
                 {/each}
             {/if}
