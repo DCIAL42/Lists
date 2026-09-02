@@ -96,6 +96,11 @@ export interface Like {
     liked: boolean
 }
 
+export interface RatingPayload {
+    media_id: number
+    rating: number
+}
+
 export interface Rating {
     id?: number
     rating: number

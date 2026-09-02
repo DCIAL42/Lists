@@ -2,6 +2,7 @@
     import Button from "$lib/components/Button.svelte";
     import type {
         MediaItem,
+        Rating,
         TrackingItem,
         TrackingPayload,
         TrackingStatus,
@@ -94,6 +95,39 @@
         item.tracking = data;
     }
 
+    async function submitRating() {
+        if (item.rating.id !== undefined) {
+            console.log("patching");
+            const payload = {
+                rating: item.rating.rating,
+            };
+            const res = await fetch(`/api/rating/${item.rating.id}`, {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) return;
+
+            const data: Rating = await res.json();
+            console.log(data);
+            item.rating = data;
+            return;
+        }
+        const payload = {
+            media_id: item.id,
+            rating: item.rating.rating,
+        };
+        const res = await fetch("/api/rating", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) return;
+
+        const data: Rating = await res.json();
+        item.rating = data;
+    }
+
     function handleTrackingChange(status: TrackingStatus) {
         if (userId === null) return;
 
@@ -125,20 +159,33 @@
         bind:this={menuContainer}
         tabindex="-1"
         onfocusout={() => {
-            showMenu = false;
+            setTimeout(() => {
+                if (!menuContainer.contains(document.activeElement))
+                    showMenu = false;
+            });
         }}
     >
         {#if showMenu}
             <div class="rating">
-                <input
-                    type="range"
-                    bind:value={item.rating.rating}
-                    min={0}
-                    max={10}
-                    defaultvalue={0}
-                    step={0.5}
-                />
-                <span>{rating}</span>
+                <div class="slider-wrapper">
+                    <span
+                        class="slider-value"
+                        style={`left: ${item.rating.rating * 10}%`}
+                    >
+                        {item.rating.rating}</span
+                    >
+
+                    <input
+                        type="range"
+                        bind:value={item.rating.rating}
+                        min={0}
+                        max={10}
+                        defaultvalue={0}
+                        step={0.5}
+                    />
+                </div>
+                <Button variant="ghost" onclick={submitRating}><Check /></Button
+                >
             </div>
             {#each ["Add to backlog", "Add to paused", "Add to done", "Add review"] as text}
                 <Button
@@ -257,11 +304,13 @@
 
     .menu {
         position: absolute;
+        display: flex;
         flex-direction: column;
         top: 0;
         left: 100%;
         width: 200px;
         background-color: var(--skeleton-base);
+        z-index: 999;
 
         .rating {
             display: grid;
@@ -270,13 +319,23 @@
             gap: 10px;
             padding: 10px;
 
-            input {
+            .slider-wrapper {
+                position: relative;
                 width: 100%;
-            }
+                padding-top: 20px;
+                display: flex;
+                align-items: center;
 
-            span {
-                width: 30px;
-                text-align: right;
+                input {
+                    width: 100%;
+                    margin: 0;
+                }
+
+                .slider-value {
+                    position: absolute;
+                    top: 0;
+                    transform: translateX(-50%);
+                }
             }
         }
     }
