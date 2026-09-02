@@ -2,12 +2,11 @@ package search
 
 import (
 	"github.com/DCIAL42/lists/cmn"
-	"gorm.io/gorm"
+	"github.com/DCIAL42/lists/db"
 )
 
 type Service struct {
-	clients map[cmn.MediaType]cmn.Client
-	db      *gorm.DB
+	*db.DBService
 }
 
 type QueryParams struct {

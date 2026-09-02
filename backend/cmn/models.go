@@ -25,10 +25,10 @@ const (
 
 type TrackingItem struct {
 	Model
-	UserID  string         `json:"user_id"`
+	UserID  string         `json:"user_id" gorm:"not null;uniqueIndex:idx_user_tracking"`
+	MediaID uint           `json:"media_id" gorm:"not null;uniqueIndex:idx_user_tracking"`
 	Status  TrackingStatus `json:"status"`
 	Type    MediaType      `json:"type"`
-	MediaID uint           `json:"media_id"`
 
 	Media Media `gorm:"foreignKey:MediaID"`
 }
@@ -57,15 +57,6 @@ type Model struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty"`
 }
 
-type MediaItem struct {
-	Type       MediaType        `json:"type"`
-	ExternalID string           `json:"external_id"`
-	Data       any              `json:"data"`
-	Tracking   TrackingResponse `json:"tracking,omitempty"`
-	Rating     RatingResponse   `json:"rating,omitempty"`
-	Cover      string           `json:"cover"`
-}
-
 type Review struct {
 	Model
 	UserID  string
@@ -84,7 +75,10 @@ type Media struct {
 	Type       MediaType
 	Title      string
 	Cover      string
-	Reviews    []Review `gorm:"foreignKey:MediaID"`
+
+	Tracking *TrackingItem `gorm:"foreignKey:MediaID"`
+
+	Reviews []Review `gorm:"foreignKey:MediaID"`
 }
 
 type MediaResponse struct {
@@ -100,10 +94,10 @@ type MediaResponse struct {
 type Client interface {
 	BuildURL(map[string]string) string
 	TryRequest(context.Context, string) (*http.Response, error)
-	ReadToSearchResult(*http.Response) (SearchResult, error)
-	Search(context.Context, map[string]string) (SearchResult, error)
-	GetItem(string) (MediaItem, error)
+	ReadToSearchResult(*http.Response, string) (SearchResult, error)
+	Search(ctx context.Context, params map[string]string) (SearchResult, error)
 	GetMedia(uint) (MediaResponse, error)
+	ResolveMedia(Media) (MediaResponse, error)
 }
 
 type SearchResult struct {

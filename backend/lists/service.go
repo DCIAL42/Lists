@@ -29,21 +29,44 @@ func NewService(DB *gorm.DB, likeService *like.Service, clients map[cmn.MediaTyp
 }
 
 func (s *Service) toListResponse(list List, userID string) (res ListResponse, err error) {
+	mediaIDs := make([]uint, 0, len(list.Items))
+
+	for _, item := range list.Items {
+		mediaIDs = append(mediaIDs, item.MediaID)
+	}
+
+	media, err := s.GetMediaList(mediaIDs, userID)
+	if err != nil {
+		return
+	}
+
+	mediaByID := make(map[uint]cmn.Media, len(media))
+
+	for _, m := range media {
+		mediaByID[m.ID] = m
+	}
+
 	resolvedItems := make([]cmn.MediaResponse, 0, len(list.Items))
 
 	for _, item := range list.Items {
-		var resolvedItem cmn.MediaResponse
-		resolvedItem, err = s.ResolveMedia(item.MediaID)
+		m, ok := mediaByID[item.MediaID]
+		if !ok {
+			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "error"}
+		}
+
+		resolvedItem, err := s.ToMediaResponse(m)
 
 		if err != nil {
-			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
-			return
+			return res, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 		}
 
-		if userID != "" {
-			resolvedItem.Tracking, err = s.GetTrackingItem(cmn.TrackingItem{UserID: userID, MediaID: resolvedItem.ID})
-			resolvedItem.Rating, err = s.GetRating(cmn.Rating{UserID: userID, MediaID: resolvedItem.ID})
-		}
+		// if userID != "" {
+		// 	resolvedItem.Rating, err = s.GetRating(cmn.Rating{UserID: userID, MediaID: resolvedItem.ID})
+		//
+		// 	if err != nil {
+		// 		fmt.Println(err)
+		// 	}
+		// }
 
 		resolvedItems = append(resolvedItems, resolvedItem)
 	}
@@ -112,7 +135,7 @@ func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
 	return s.toListResponse(list, list.UserID)
 }
 
-func (s *Service) updateList(id uint, userID string, req UpdateListRequest) (res ListResponse, err error) {
+func (s *Service) updateList(id uint, userID string, req ListRequest) (res ListResponse, err error) {
 	var list List
 	result := s.DB.
 		Model(&List{}).
@@ -131,7 +154,7 @@ func (s *Service) updateList(id uint, userID string, req UpdateListRequest) (res
 		return ListResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
 	}
 
-	first, _ := s.ResolveItem(req.Items[0].Media.Type, req.Items[0].Media.ExternalID)
+	first, _ := s.ResolveMedia(req.Items[0].MediaID, userID)
 
 	err = s.DB.Transaction(func(tx *gorm.DB) error {
 		if req.Title != "" {
@@ -147,7 +170,13 @@ func (s *Service) updateList(id uint, userID string, req UpdateListRequest) (res
 				return err
 			}
 
-			list.Items = req.Items
+			resolvedItems := make([]ListItem, 0, len(req.Items))
+			for _, item := range req.Items {
+				resolvedItems = append(resolvedItems, ListItem{
+					MediaID: item.MediaID,
+				})
+			}
+			list.Items = resolvedItems
 		}
 
 		return tx.Save(&list).Error
@@ -252,26 +281,6 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 	}
 
 	return
-}
-
-type ListQueryCfg struct {
-	Order string
-	By    string
-}
-
-func orderByLikes(order string) func(*gorm.DB) *gorm.DB {
-	return func(d *gorm.DB) *gorm.DB {
-		return d.Select("lists.*, COUNT(likes.id) AS like_count").
-			Joins("LEFT JOIN likes ON likes.list_id = lists.id AND likes.deleted_at IS NULL").
-			Group("lists.id").
-			Order("like_count " + order)
-	}
-}
-
-func standardOrder(by, order string) func(*gorm.DB) *gorm.DB {
-	return func(d *gorm.DB) *gorm.DB {
-		return d.Order(by + " " + order)
-	}
 }
 
 func (s *Service) getAllLists(page uint, cfg ListQueryCfg) (res ListsPreviewResponse, err error) {

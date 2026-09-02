@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DCIAL42/lists/client/movies"
+	"github.com/DCIAL42/lists/client/music"
+	"github.com/DCIAL42/lists/client/search"
 	"github.com/DCIAL42/lists/cmn"
-	"github.com/DCIAL42/lists/internals/movies"
-	"github.com/DCIAL42/lists/internals/music"
-	"github.com/DCIAL42/lists/internals/search"
 	"github.com/DCIAL42/lists/lists"
 	"github.com/DCIAL42/lists/middleware"
 	"github.com/DCIAL42/lists/social/follow"
@@ -72,17 +72,17 @@ func SetupRouter() (*gin.Engine, error) {
 	}
 
 	clients := map[cmn.MediaType]cmn.Client{
-		cmn.TypeAlbum: music.NewMusicClient(httpClient, db),
-		cmn.TypeMovie: movies.NewMovieClient(httpClient, db),
+		cmn.TypeAlbum: music.NewClient(httpClient, db),
+		cmn.TypeMovie: movies.NewClient(httpClient, db),
 	}
 
 	userGroup := api.Group("/users")
-	userService := users.NewUserService(db)
+	userService := users.NewService(db)
 	userService.SetupRoutes(userGroup)
 	userService.SetupUserRoutes(api.Group("/:username"))
 
 	searchGroup := api.Group("/search")
-	searchService := search.NewSearchService(clients, db)
+	searchService := search.NewService(clients, db)
 	searchService.SetupRoutes(searchGroup)
 
 	likeGroup := api.Group("/like")

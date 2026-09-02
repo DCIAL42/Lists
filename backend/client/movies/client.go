@@ -12,9 +12,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
-	"github.com/DCIAL42/lists/internals/client"
 	"gorm.io/gorm"
 )
 
@@ -30,20 +30,8 @@ func (r *MovieResponse) toMovie() Movie {
 	}
 }
 
-func (r *MovieResponse) toMediaItem() cmn.MediaItem {
-	return cmn.MediaItem{
-		Type:       cmn.TypeMovie,
-		ExternalID: strconv.Itoa(r.ExternalID),
-		Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
-		Data: MovieData{
-			Title:      r.Title,
-			Popularity: r.Popularity,
-		},
-	}
-}
-
-func (m *Movie) toMediaResponse() cmn.MediaResponse {
-	return cmn.MediaResponse{
+func (m *Movie) toMediaResponse() (res cmn.MediaResponse) {
+	res = cmn.MediaResponse{
 		ID:    m.MediaID,
 		Type:  cmn.TypeMovie,
 		Title: m.Media.Title,
@@ -52,18 +40,14 @@ func (m *Movie) toMediaResponse() cmn.MediaResponse {
 			Popularity: m.Popularity,
 		},
 	}
-}
-
-func (m *Movie) toMediaItem() cmn.MediaItem {
-	return cmn.MediaItem{
-		Type:       cmn.TypeMovie,
-		ExternalID: m.Media.ExternalID,
-		Cover:      m.Media.Cover,
-		Data: MovieData{
-			Title:      m.Media.Title,
-			Popularity: m.Popularity,
-		},
+	if m.Media.Tracking != nil {
+		tracking := *m.Media.Tracking
+		res.Tracking = cmn.TrackingResponse{
+			ID:     tracking.ID,
+			Status: tracking.Status,
+		}
 	}
+	return
 }
 
 func (m Movie) GetID() uint {
@@ -78,7 +62,7 @@ func (m Movie) GetModel() cmn.Model {
 	return m.Model
 }
 
-func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
+func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
 	var data Response
 
 	err = json.NewDecoder(resp.Body).Decode(&data)
@@ -92,12 +76,34 @@ func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, 
 		return data.Results[i].Popularity > data.Results[j].Popularity
 	})
 
-	results := make([]cmn.MediaResponse, 0, len(data.Results))
+	movies := make([]Movie, 0, len(data.Results))
+	mediaIDs := make([]uint, 0, len(data.Results))
 
 	for _, r := range data.Results {
 		var movie Movie = r.toMovie()
-		db.TrySaveItem(c.DB, &movie)
-		results = append(results, movie.toMediaResponse())
+		if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
+			return
+		}
+		movies = append(movies, movie)
+		mediaIDs = append(mediaIDs, movie.MediaID)
+	}
+
+	var tracking []cmn.TrackingItem
+
+	if err = c.DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
+		return
+	}
+
+	trackingByMediaID := make(map[uint]*cmn.TrackingItem, len(tracking))
+	for i := range tracking {
+		trackingByMediaID[tracking[i].MediaID] = &tracking[i]
+	}
+
+	results := make([]cmn.MediaResponse, 0, len(movies))
+
+	for i := range movies {
+		movies[i].Media.Tracking = trackingByMediaID[movies[i].MediaID]
+		results = append(results, movies[i].toMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: results}, nil
@@ -114,7 +120,7 @@ func (c *Client) BuildURL(params map[string]string) string {
 	return url
 }
 
-func NewMovieClient(httpClient *http.Client, DB *gorm.DB) *Client {
+func NewClient(httpClient *http.Client, DB *gorm.DB) *Client {
 	token, ok := os.LookupEnv("TMDB_TOKEN")
 	if !ok {
 		panic("tmdb token not found")
@@ -168,46 +174,6 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
-	var item Movie
-	ok := db.TryGetItem(c.DB, ID, &item)
-	if ok {
-		return item.toMediaItem(), nil
-	}
-	if len(ID) == 0 {
-		err = errors.ErrUnsupported
-		return
-	}
-	targetUrl := c.baseURL + "/movie/" + ID
-
-	resp, err := c.TryRequest(context.Background(), targetUrl)
-
-	if err != nil {
-		return
-	}
-
-	var movie MovieResponse
-
-	err = json.NewDecoder(resp.Body).Decode(&movie)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	defer resp.Body.Close()
-
-	return cmn.MediaItem{
-		Type:       cmn.TypeMovie,
-		ExternalID: strconv.Itoa(movie.ExternalID),
-		Cover:      "https://image.tmdb.org/t/p/w500" + movie.Poster,
-		Data: MovieData{
-			Title:      movie.Title,
-			Popularity: movie.Popularity,
-		},
-	}, nil
-}
-
 func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 	var item Movie
 	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
@@ -215,5 +181,16 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return
 	}
+	return item.toMediaResponse(), nil
+}
+
+func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
+	var item Movie
+	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").First(&item)
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+		return
+	}
+	item.Media = m
 	return item.toMediaResponse(), nil
 }

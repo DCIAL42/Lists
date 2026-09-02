@@ -25,29 +25,52 @@ func defaultDBServiceConfig() *ServiceConfig {
 	}
 }
 
-func (s *DBService) ResolveItem(t cmn.MediaType, externalID string) (cmn.MediaItem, error) {
-	c, ok := s.Clients[t]
-
-	if !ok {
-		return cmn.MediaItem{}, errors.New("Invalid item type, unable to resolve.")
+func (s *DBService) GetMedia(mediaID uint, userID string) (res cmn.Media, err error) {
+	tx := s.DB
+	if userID != "" {
+		tx = tx.Preload("Tracking", "user_id = ?", userID)
+	}
+	if err = tx.Where("id = ?", mediaID).First(&res).Error; err != nil {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
+		return
 	}
 
-	return c.GetItem(externalID)
+	return
 }
 
-func (s *DBService) ResolveMedia(mediaID uint) (cmn.MediaResponse, error) {
-	var media cmn.Media
-	if err := s.DB.Where("id = ?", mediaID).First(&media).Error; err != nil {
-		return cmn.MediaResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
+func (s *DBService) GetMediaList(mediaIDs []uint, userID string) (res []cmn.Media, err error) {
+	tx := s.DB
+	if userID != "" {
+		tx = tx.Preload("Tracking", "user_id = ?", userID)
 	}
-	t := media.Type
+	if err = tx.Where("id IN ?", mediaIDs).Find(&res).Error; err != nil {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
+		return
+	}
+
+	return
+}
+
+func (s *DBService) ToMediaResponse(m cmn.Media) (res cmn.MediaResponse, err error) {
+	t := m.Type
 	c, ok := s.Clients[t]
 
 	if !ok {
 		return cmn.MediaResponse{}, errors.New("Invalid item type, unable to resolve.")
 	}
 
-	return c.GetMedia(mediaID)
+	return c.ResolveMedia(m)
+}
+
+func (s *DBService) ResolveMedia(mediaID uint, userID string) (res cmn.MediaResponse, err error) {
+	var media cmn.Media
+	media, err = s.GetMedia(mediaID, userID)
+
+	if err != nil {
+		return
+	}
+
+	return s.ToMediaResponse(media)
 }
 
 func NewDBService(db *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*ServiceConfig) *DBService {
@@ -77,21 +100,6 @@ func (db *DBService) GetPage(page uint, order func(*gorm.DB) *gorm.DB, dst any) 
 		Limit(int(db.PageSize))
 
 	return result, uint(count)
-}
-
-func (db *DBService) GetTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
-	var item cmn.TrackingItem
-	result := db.DB.Where(req).First(&item)
-
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
-		return
-	}
-
-	return cmn.TrackingResponse{
-		ID:     item.ID,
-		Status: item.Status,
-	}, nil
 }
 
 func (db *DBService) GetRating(req cmn.Rating) (res cmn.RatingResponse, err error) {
@@ -131,7 +139,7 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if time.Since(existing.GetModel().UpdatedAt) > time.Second {
+		if time.Since(existing.GetModel().UpdatedAt) > time.Hour*24 {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
 				return false, err
 			}
@@ -153,12 +161,4 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func TryGetItem(DB *gorm.DB, externalID string, dst any) bool {
-	result := DB.Where("external_id = ?", externalID).Preload("Media").First(dst)
-	if result.Error != nil {
-		return false
-	}
-	return true
 }

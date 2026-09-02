@@ -39,7 +39,7 @@ func Search(ctx context.Context, c cmn.Client, params map[string]string) (res cm
 
 	defer resp.Body.Close()
 
-	res, err = c.ReadToSearchResult(resp)
+	res, err = c.ReadToSearchResult(resp, ctx.Value("userID").(string))
 
 	if err != nil {
 		slog.Error(err.Error())

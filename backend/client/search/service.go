@@ -8,14 +8,16 @@ import (
 	"sync"
 
 	"github.com/DCIAL42/lists/cmn"
-	"github.com/clerk/clerk-sdk-go/v2"
+	"github.com/DCIAL42/lists/db"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
-func NewSearchService(clients map[cmn.MediaType]cmn.Client, db *gorm.DB) Service {
-	return Service{clients, db}
+func NewService(clients map[cmn.MediaType]cmn.Client, DB *gorm.DB) Service {
+	return Service{
+		DBService: db.NewDBService(DB, clients),
+	}
 }
 
 func AddTrackingInfo(db *gorm.DB, items []cmn.MediaResponse, userID string) (res []cmn.MediaResponse, err error) {
@@ -37,7 +39,7 @@ func AddTrackingInfo(db *gorm.DB, items []cmn.MediaResponse, userID string) (res
 }
 
 func (s *Service) Search(c *gin.Context) {
-	claims, ok := clerk.SessionClaimsFromContext(c.Request.Context())
+	userID := c.GetString("userID")
 
 	results := make([]cmn.SearchResult, 0)
 	test := make(map[cmn.MediaType]cmn.SearchResult)
@@ -62,9 +64,10 @@ func (s *Service) Search(c *gin.Context) {
 	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
 	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
+	ctx = context.WithValue(ctx, "userID", userID)
 
 	for _, resultType := range resultTypes {
-		cl := s.clients[cmn.MediaType(resultType)]
+		cl := s.Clients[cmn.MediaType(resultType)]
 
 		g.Go(func() error {
 			r, err := cl.Search(ctx, map[string]string{"query": queryParams.Query, "page": queryParams.Page})
@@ -72,10 +75,6 @@ func (s *Service) Search(c *gin.Context) {
 			if err != nil {
 				slog.Error(err.Error())
 				return nil
-			}
-
-			if ok && claims.Subject != "" {
-				r.Items, err = AddTrackingInfo(s.db, r.Items, claims.Subject)
 			}
 
 			mu.Lock()

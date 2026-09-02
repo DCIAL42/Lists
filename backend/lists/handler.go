@@ -129,7 +129,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		var body UpdateListRequest
+		var body ListRequest
 
 		if err := c.ShouldBindJSON(&body); err != nil {
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})

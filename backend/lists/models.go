@@ -9,22 +9,17 @@ type ListItemRequest struct {
 	MediaID uint          `json:"media_id"`
 }
 
-type ListItem struct {
-	cmn.Model
-	ListID  uint
-	MediaID uint `json:"media_id"`
-
-	Media cmn.Media `gorm:"foreignKey:MediaID"`
-}
-
-type UpdateListRequest struct {
-	Title string     `json:"title"`
-	Items []ListItem `json:"items"`
-}
-
 type ListRequest struct {
 	Title string            `json:"title"`
 	Items []ListItemRequest `json:"items"`
+}
+
+type ListItem struct {
+	cmn.Model
+	ListID  uint
+	MediaID uint
+
+	Media cmn.Media `gorm:"foreignKey:MediaID"`
 }
 
 type List struct {

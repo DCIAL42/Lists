@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
-	"github.com/DCIAL42/lists/internals/client"
 	"gorm.io/gorm"
 )
 
@@ -23,30 +23,8 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (r *AlbumResponse) toMediaItem() cmn.MediaItem {
-	var artist string
-	if len(r.Artists) > 0 {
-		artist = r.Artists[0].Name
-	}
-
-	var cover string
-	if len(r.Images) > 0 {
-		cover = r.Images[0].URL
-	}
-
-	return cmn.MediaItem{
-		Type:       cmn.TypeAlbum,
-		ExternalID: r.ExternalID,
-		Cover:      cover,
-		Data: AlbumData{
-			Title:  r.Title,
-			Artist: artist,
-		},
-	}
-}
-
-func (a *Album) toMediaResponse() cmn.MediaResponse {
-	return cmn.MediaResponse{
+func (a *Album) toMediaResponse() (res cmn.MediaResponse) {
+	res = cmn.MediaResponse{
 		ID:    a.MediaID,
 		Type:  a.Media.Type,
 		Title: a.Media.Title,
@@ -55,6 +33,14 @@ func (a *Album) toMediaResponse() cmn.MediaResponse {
 			Artist: a.Artist,
 		},
 	}
+	if a.Media.Tracking != nil {
+		tracking := *a.Media.Tracking
+		res.Tracking = cmn.TrackingResponse{
+			ID:     tracking.ID,
+			Status: tracking.Status,
+		}
+	}
+	return
 }
 
 func (r *AlbumResponse) toAlbumData() AlbumData {
@@ -86,19 +72,7 @@ func (a Album) GetModel() cmn.Model {
 	return a.Model
 }
 
-func (a *Album) toMediaItem() cmn.MediaItem {
-	return cmn.MediaItem{
-		Type:       cmn.TypeAlbum,
-		ExternalID: a.Media.ExternalID,
-		Cover:      a.Media.Cover,
-		Data: AlbumData{
-			Title:  a.Media.Title,
-			Artist: a.Artist,
-		},
-	}
-}
-
-func (c *Client) ReadToSearchResult(resp *http.Response) (res cmn.SearchResult, err error) {
+func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
 	var data Response
 
 	err = json.NewDecoder(resp.Body).Decode(&data)
@@ -186,7 +160,7 @@ func (c *Client) fetchToken(ctx context.Context) {
 	c.headers["Authorization"] = tokenData.Type + " " + tokenData.Token
 }
 
-func NewMusicClient(httpClient *http.Client, DB *gorm.DB) *Client {
+func NewClient(httpClient *http.Client, DB *gorm.DB) *Client {
 	c := &Client{
 		DB,
 		httpClient,
@@ -239,34 +213,6 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetItem(ID string) (res cmn.MediaItem, err error) {
-	var item Album
-	ok := db.TryGetItem(c.DB, ID, &item)
-	if ok {
-		return item.toMediaItem(), nil
-	}
-	targetUrl := c.baseURL + "/albums/" + ID
-
-	resp, err := c.TryRequest(context.Background(), targetUrl)
-
-	if err != nil {
-		return
-	}
-
-	var album AlbumResponse
-
-	err = json.NewDecoder(resp.Body).Decode(&album)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	defer resp.Body.Close()
-
-	return album.toMediaItem(), nil
-}
-
 func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 	var item Album
 	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
@@ -274,5 +220,16 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return
 	}
+	return item.toMediaResponse(), nil
+}
+
+func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
+	var item Album
+	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").First(&item)
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+		return
+	}
+	item.Media = m
 	return item.toMediaResponse(), nil
 }

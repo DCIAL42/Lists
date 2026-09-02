@@ -18,6 +18,21 @@ func NewService(DB *gorm.DB, clients map[cmn.MediaType]cmn.Client, config ...*db
 	}
 }
 
+func (s *Service) getTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
+	var item cmn.TrackingItem
+	result := s.DB.Where(req).First(&item)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: result.Error.Error()}
+		return
+	}
+
+	return cmn.TrackingResponse{
+		ID:     item.ID,
+		Status: item.Status,
+	}, nil
+}
+
 func (s *Service) createTrackingItem(req cmn.TrackingItem) (res cmn.TrackingResponse, err error) {
 	result := s.DB.Create(&req)
 
@@ -104,17 +119,17 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 
 	for _, item := range list {
 		var resItem cmn.MediaResponse
-		resItem, err = s.ResolveMedia(item.MediaID)
+		resItem, err = s.ResolveMedia(item.MediaID, pat.UserID)
 
 		if err != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 			return
 		}
 
-		// resItem.Tracking = cmn.TrackingResponse{
-		// 	ID:     item.ID,
-		// 	Status: item.Status,
-		// }
+		resItem.Tracking = cmn.TrackingResponse{
+			ID:     item.ID,
+			Status: item.Status,
+		}
 
 		resolved = append(resolved, resItem)
 	}

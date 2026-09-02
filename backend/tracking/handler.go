@@ -84,7 +84,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		item.UserID = userID
 
-		res, err := s.GetTrackingItem(item)
+		res, err := s.getTrackingItem(item)
 
 		if err != nil {
 			cmn.HandleError(c, err)

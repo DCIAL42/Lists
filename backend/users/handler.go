@@ -13,7 +13,7 @@ type Service struct {
 	*gorm.DB
 }
 
-func NewUserService(db *gorm.DB) *Service {
+func NewService(db *gorm.DB) *Service {
 	return &Service{db}
 }
 

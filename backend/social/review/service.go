@@ -23,33 +23,32 @@ func (s *Service) parseReviewRequest(req ReviewRequest, userID string) (cmn.Revi
 	if req.Rating > 10 {
 		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid rating"}
 	}
-	if req.ExternalID == "" {
+	if req.MediaID == 0 {
 		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid media id"}
 	}
 	d, err := time.Parse("02-01-2006", req.Date)
 	if err != nil {
 		return cmn.Review{}, &cmn.HttpError{Code: http.StatusBadRequest, Message: "invalid date"}
 	}
-	var item cmn.Media
-	db.TryGetItem(s.DB, req.ExternalID, &item)
+	media, err := s.GetMedia(req.MediaID, userID)
 	return cmn.Review{
 		UserID:  userID,
-		MediaID: item.ID,
+		MediaID: media.ID,
 		Rating:  req.Rating,
 		Body:    req.Body,
 		Rewatch: req.Rewatch,
 		Date:    d,
-	}, nil
+	}, err
 }
 
 func toReviewResponse(r cmn.Review) ReviewResponse {
 	return ReviewResponse{
-		ID:         r.ID,
-		ExternalID: r.Media.ExternalID,
-		Rating:     r.Rating,
-		Body:       r.Body,
-		Rewatch:    r.Rewatch,
-		Date:       r.Date.Format("02-01-2006"),
+		ID:      r.ID,
+		MediaID: r.MediaID,
+		Rating:  r.Rating,
+		Body:    r.Body,
+		Rewatch: r.Rewatch,
+		Date:    r.Date.Format("02-01-2006"),
 	}
 }
 
