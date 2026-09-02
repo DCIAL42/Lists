@@ -12,10 +12,11 @@ import (
 	"github.com/DCIAL42/lists/client/search"
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/lists"
+	"github.com/DCIAL42/lists/media"
 	"github.com/DCIAL42/lists/middleware"
 	"github.com/DCIAL42/lists/social/follow"
 	"github.com/DCIAL42/lists/social/like"
-	"github.com/DCIAL42/lists/social/review"
+	"github.com/DCIAL42/lists/social/rating"
 	"github.com/DCIAL42/lists/tracking"
 	"github.com/DCIAL42/lists/users"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
@@ -65,6 +66,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&music.Album{},
 		&movies.Movie{},
 		&cmn.Like{},
+		&cmn.Rating{},
 	)
 
 	if err != nil {
@@ -103,9 +105,15 @@ func SetupRouter() (*gin.Engine, error) {
 	trackingService := tracking.NewService(db, clients)
 	trackingService.SetupRoutes(trackingGroup)
 
-	reviewGroup := api.Group("/review")
-	reviewService := review.NewService(db, clients)
-	reviewService.SetupRoutes(reviewGroup)
+	ratingGroup := api.Group("/rating")
+	ratingService := rating.NewService(db, clients)
+	ratingService.SetupRoutes(ratingGroup)
+	ratingService.SetupUserRoutes(api.Group("/:username"))
+
+	mediaGroup := api.Group("/media")
+	mediaService := media.NewService(db, clients)
+	mediaService.SetupRoutes(mediaGroup)
+	mediaService.SetupUserRoutes(api.Group("/:username"))
 
 	return r, nil
 }

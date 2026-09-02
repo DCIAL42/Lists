@@ -2,6 +2,12 @@ package lists
 
 import "gorm.io/gorm"
 
+type Settings struct {
+	Page  uint
+	Limit uint
+	Full  bool
+}
+
 type ListQueryCfg struct {
 	Order string
 	By    string

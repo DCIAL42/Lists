@@ -54,7 +54,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		page := uint(val)
 
-		res, err := s.getAllLists(page, ListQueryCfg{
+		res, err := s.getAllLists(page, &ListQueryCfg{
 			Order: order,
 			By:    orderBy,
 		})
@@ -200,22 +200,5 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 		}
 
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid fmt query"})
-	})
-
-	r.GET("/lists/recent", func(c *gin.Context) {
-		username := c.Param("username")
-		user, err := users.GetUserByUsername(username)
-		if err != nil {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "user not found"})
-			return
-		}
-
-		res, err := s.getListsPreviewByUser(user.ID, &Settings{Limit: 4})
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-
-		c.IndentedJSON(http.StatusOK, res)
 	})
 }

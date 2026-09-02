@@ -40,10 +40,17 @@ func (a *Album) toMediaResponse() (res cmn.MediaResponse) {
 			Status: tracking.Status,
 		}
 	}
+	if a.Media.Rating != nil {
+		rating := *a.Media.Rating
+		res.Rating = cmn.RatingResponse{
+			ID:     rating.ID,
+			Rating: rating.Rating,
+		}
+	}
 	return
 }
 
-func (r *AlbumResponse) toAlbumData() AlbumData {
+func (r *AlbumResponse) toAlbum() Album {
 	var artist string
 	if len(r.Artists) > 0 {
 		artist = r.Artists[0].Name
@@ -53,10 +60,14 @@ func (r *AlbumResponse) toAlbumData() AlbumData {
 		cover = r.Images[0].URL
 	}
 
-	return AlbumData{
-		Title:  r.Title,
+	return Album{
 		Artist: artist,
-		Cover:  cover,
+		Media: cmn.Media{
+			Type:       cmn.TypeAlbum,
+			ExternalID: r.ExternalID,
+			Title:      r.Title,
+			Cover:      cover,
+		},
 	}
 }
 
@@ -84,24 +95,37 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 
 	defer resp.Body.Close()
 
-	albums := make([]cmn.MediaResponse, 0, len(data.Albums.Items))
+	albums := make([]Album, 0, len(data.Albums.Items))
+	mediaIDs := make([]uint, 0, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
-		albumdata := r.toAlbumData()
-		album := Album{
-			Artist: albumdata.Artist,
-			Media: cmn.Media{
-				Type:       cmn.TypeAlbum,
-				ExternalID: r.ExternalID,
-				Title:      r.Title,
-				Cover:      albumdata.Cover,
-			},
+		album := r.toAlbum()
+		if _, err = db.TrySaveItem(c.DB, &album); err != nil {
+			return
 		}
-		db.TrySaveItem(c.DB, &album)
-		albums = append(albums, album.toMediaResponse())
+		albums = append(albums, album)
+		mediaIDs = append(mediaIDs, album.MediaID)
 	}
 
-	return cmn.SearchResult{Items: albums}, nil
+	var tracking []cmn.TrackingItem
+
+	if err = c.DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
+		return
+	}
+
+	trackingByMediaID := make(map[uint]*cmn.TrackingItem, len(tracking))
+	for i := range tracking {
+		trackingByMediaID[tracking[i].MediaID] = &tracking[i]
+	}
+
+	results := make([]cmn.MediaResponse, 0, len(albums))
+
+	for i := range albums {
+		albums[i].Media.Tracking = trackingByMediaID[albums[i].MediaID]
+		results = append(results, albums[i].toMediaResponse())
+	}
+
+	return cmn.SearchResult{Items: results}, nil
 }
 
 func (c *Client) BuildURL(params map[string]string) string {

@@ -86,3 +86,31 @@ func (s *Service) getAllReviews() (res []ReviewResponse, err error) {
 
 	return
 }
+
+func (s *Service) getReviewsByUser(userID string) ([]ReviewResponse, error) {
+	var reviews []cmn.Review
+	if err := s.DB.Where("user_id = ?", userID).Find(&reviews).Error; err != nil {
+		return nil, err
+	}
+
+	res := make([]ReviewResponse, 0, len(reviews))
+	for _, r := range reviews {
+		res = append(res, toReviewResponse(r))
+	}
+
+	return res, nil
+}
+
+func (s *Service) getReviewsByMedia(mediaID uint) ([]ReviewResponse, error) {
+	var reviews []cmn.Review
+	if err := s.DB.Where("media_id = ?", mediaID).Find(&reviews).Error; err != nil {
+		return nil, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to find reviews"}
+	}
+
+	res := make([]ReviewResponse, 0, len(reviews))
+	for _, r := range reviews {
+		res = append(res, toReviewResponse(r))
+	}
+
+	return res, nil
+}

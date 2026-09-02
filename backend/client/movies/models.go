@@ -28,9 +28,7 @@ type MovieResponse struct {
 }
 
 type MovieData struct {
-	Title      string  `json:"title"`
 	Popularity float32 `json:"popularity"`
-	Poster     string  `json:"cover"`
 }
 
 type Movie struct {

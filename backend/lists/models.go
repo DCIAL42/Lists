@@ -25,9 +25,9 @@ type ListItem struct {
 type List struct {
 	cmn.Model
 	UserID string
-	Title  string     `json:"title"`
-	Items  []ListItem `gorm:"foreignKey:ListID" json:"items"`
-	Cover  string     `json:"cover"`
+	Title  string
+	Items  []ListItem `gorm:"foreignKey:ListID"`
+	Cover  string
 	Likes  []cmn.Like `gorm:"foreignKey:ListID"`
 }
 
@@ -51,7 +51,7 @@ type ListsPreviewResponse struct {
 	Count uint       `json:"count"`
 }
 
-type ListsResponse struct {
+type ListsFullResponse struct {
 	Lists []ListResponse `json:"lists"`
 	Next  string         `json:"next,omitempty"`
 	Page  uint           `json:"page"`

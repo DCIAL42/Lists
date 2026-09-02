@@ -91,12 +91,23 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 	}, nil
 }
 
-func (s *Service) createList(req ListRequest, userID string) (res ListResponse, err error) {
-	var x cmn.Media
-	s.DB.Where("id = ?", req.Items[0].MediaID).First(&x)
+func (s *Service) getListById(id uint, userID string) (res ListResponse, err error) {
+	var list List
 
-	// var first cmn.MediaResponse
-	// first, err = s.ResolveMedia(req.Items[0].Type, req.Items[0].ExternalID)
+	result := s.DB.Preload("Items").First(&list, id)
+
+	if result.Error != nil {
+		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
+		return
+	}
+
+	return s.toListResponse(list, userID)
+}
+
+func (s *Service) createList(req ListRequest, userID string) (res ListResponse, err error) {
+	var first cmn.Media
+	s.DB.Where("id = ?", req.Items[0].MediaID).First(&first)
+
 	items := make([]ListItem, 0, len(req.Items))
 	for _, item := range req.Items {
 		items = append(items, ListItem{
@@ -108,7 +119,7 @@ func (s *Service) createList(req ListRequest, userID string) (res ListResponse, 
 		Title:  req.Title,
 		Items:  items,
 	}
-	list.Cover = x.Cover
+	list.Cover = first.Cover
 	result := s.DB.Create(&list)
 
 	if result.Error != nil {
@@ -132,7 +143,7 @@ func (s *Service) deleteList(id uint, userID string) (ListResponse, error) {
 		return ListResponse{}, &cmn.HttpError{Code: http.StatusNotFound, Message: "not found"}
 	}
 
-	return s.toListResponse(list, list.UserID)
+	return s.toListResponse(list, userID)
 }
 
 func (s *Service) updateList(id uint, userID string, req ListRequest) (res ListResponse, err error) {
@@ -191,26 +202,12 @@ func (s *Service) updateList(id uint, userID string, req ListRequest) (res ListR
 
 	s.DB.Preload("Items").First(&list, id)
 
-	return s.toListResponse(list, list.UserID)
-}
-
-func (s *Service) getListById(id uint, userID string) (res ListResponse, err error) {
-	var list List
-
-	result := s.DB.Preload("Items").First(&list, id)
-
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list with id: %d", id)}
-		return
-	}
-
 	return s.toListResponse(list, userID)
 }
 
-type Settings struct {
-	Page  uint
-	Limit uint
-	Full  bool
+type ListsResponse interface {
+	ListsFullResponse
+	ListsPreviewResponse
 }
 
 func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res ListsPreviewResponse, err error) {
@@ -218,32 +215,37 @@ func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res Lists
 		cfg.Page = 1
 	}
 	res.Page = cfg.Page
-	lists := make([]List, 0)
-
-	var result *gorm.DB
-	result, res.Count = s.GetPage(cfg.Page, standardOrder("id", "desc"), &List{})
-	if cfg.Limit > 0 {
-		result = result.Limit(int(cfg.Limit))
-	}
-	result = result.Where("user_id = ?", userID).Find(&lists)
-
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
-		return
-	}
-
-	res.Lists = make([]ListMeta, 0, len(lists))
 
 	userDetails, err := users.GetUserDetails(userID)
 
+	if err != nil {
+		return res, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to fetch user details"}
+	}
+
+	var lists []List
+
+	var result *gorm.DB
+	result, res.Count = s.GetPage(cfg.Page, standardOrder("id", "desc"), &List{})
+	result = result.Where("user_id = ?", userID).Preload("Likes")
+	if cfg.Limit > 0 {
+		result = result.Limit(int(cfg.Limit))
+	}
+
+	if err = result.Find(&lists).Error; err != nil {
+		return res, &cmn.HttpError{Code: http.StatusNotFound, Message: fmt.Sprintf("No list for user: %s", userID)}
+	}
+
+	if cfg.Full {
+	}
+	res.Lists = make([]ListMeta, 0, len(lists))
+
 	for _, list := range lists {
-		likeCount := s.DB.Model(list).Association("Likes").Count()
 		listPreview := ListMeta{
-			list.ID,
-			list.Title,
-			*userDetails.Username,
-			list.Cover,
-			uint(likeCount),
+			ID:        list.ID,
+			Title:     list.Title,
+			CreatedBy: *userDetails.Username,
+			Cover:     list.Cover,
+			Likes:     uint(len(list.Likes)),
 		}
 
 		res.Lists = append(res.Lists, listPreview)
@@ -252,7 +254,7 @@ func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res Lists
 	return
 }
 
-func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, err error) {
+func (s *Service) getListsByUser(userID string, page uint) (res ListsFullResponse, err error) {
 	res.Page = page
 	lists := make([]List, 0)
 
@@ -268,7 +270,7 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 	res.Lists = make([]ListResponse, 0, len(lists))
 
 	for _, list := range lists {
-		listResponse, err := s.toListResponse(list, list.UserID)
+		listResponse, err := s.toListResponse(list, userID)
 		likeCount := s.DB.Model(list).Association("Likes").Count()
 		listResponse.Likes = uint(likeCount)
 
@@ -283,7 +285,7 @@ func (s *Service) getListsByUser(userID string, page uint) (res ListsResponse, e
 	return
 }
 
-func (s *Service) getAllLists(page uint, cfg ListQueryCfg) (res ListsPreviewResponse, err error) {
+func (s *Service) getAllLists(page uint, cfg *ListQueryCfg) (res ListsPreviewResponse, err error) {
 	res.Page = page
 	lists := make([]List, 0)
 

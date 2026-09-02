@@ -5,6 +5,7 @@ import (
 
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/middleware"
+	"github.com/DCIAL42/lists/users"
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,6 +15,24 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 	r.GET("/", func(c *gin.Context) {
 		res, err := s.getAllReviews()
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
+	})
+
+	r.GET("/:mediaID", func(c *gin.Context) {
+		mediaID, err := cmn.ParseParam[uint](c, "mediaID")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "bad media id"})
+			return
+		}
+
+		res, err := s.getReviewsByMedia(mediaID)
 
 		if err != nil {
 			cmn.HandleError(c, err)
@@ -65,4 +84,22 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 	protected := r.Group("/")
 	protected.Use(middleware.RequireUser())
+
+	r.GET("/reviews", func(c *gin.Context) {
+		username := c.Param("username")
+		user, err := users.GetUserByUsername(username)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "user not found"})
+			return
+		}
+
+		res, err := s.getReviewsByUser(user.ID)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
+	})
 }

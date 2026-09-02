@@ -47,6 +47,13 @@ func (m *Movie) toMediaResponse() (res cmn.MediaResponse) {
 			Status: tracking.Status,
 		}
 	}
+	if m.Media.Rating != nil {
+		rating := *m.Media.Rating
+		res.Rating = cmn.RatingResponse{
+			ID:     rating.ID,
+			Rating: rating.Rating,
+		}
+	}
 	return
 }
 

@@ -28,7 +28,7 @@ func defaultDBServiceConfig() *ServiceConfig {
 func (s *DBService) GetMedia(mediaID uint, userID string) (res cmn.Media, err error) {
 	tx := s.DB
 	if userID != "" {
-		tx = tx.Preload("Tracking", "user_id = ?", userID)
+		tx = tx.Preload("Tracking", "user_id = ?", userID).Preload("Rating", "user_id = ?", userID)
 	}
 	if err = tx.Where("id = ?", mediaID).First(&res).Error; err != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
@@ -41,7 +41,7 @@ func (s *DBService) GetMedia(mediaID uint, userID string) (res cmn.Media, err er
 func (s *DBService) GetMediaList(mediaIDs []uint, userID string) (res []cmn.Media, err error) {
 	tx := s.DB
 	if userID != "" {
-		tx = tx.Preload("Tracking", "user_id = ?", userID)
+		tx = tx.Preload("Tracking", "user_id = ?", userID).Preload("Rating", "user_id = ?", userID)
 	}
 	if err = tx.Where("id IN ?", mediaIDs).Find(&res).Error; err != nil {
 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "media item not found"}
@@ -148,6 +148,9 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 				return false, err
 			}
 			return true, nil
+		}
+		if err := DB.Preload("Media").First(dst, existing.GetModel().ID).Error; err != nil {
+			return false, err
 		}
 		return false, nil
 	}

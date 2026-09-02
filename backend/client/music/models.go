@@ -35,9 +35,7 @@ type Response struct {
 }
 
 type AlbumData struct {
-	Title  string `json:"title"`
 	Artist string `json:"artist"`
-	Cover  string `json:"cover"`
 }
 
 type Album struct {
