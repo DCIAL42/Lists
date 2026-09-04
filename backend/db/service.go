@@ -102,21 +102,12 @@ func (db *DBService) GetPage(page uint, order func(*gorm.DB) *gorm.DB, dst any) 
 	return result, uint(count)
 }
 
-func (db *DBService) GetRating(req cmn.Rating) (res cmn.RatingResponse, err error) {
-	var r cmn.Rating
-	err = db.DB.Where(req).First(&r).Error
-
-	res = cmn.RatingResponse{
-		ID:     r.ID,
-		Rating: r.Rating,
-	}
-
-	return
-}
-
 type ExternalItem interface {
 	GetExternalID() string
 	GetModel() cmn.Model
+	GetMedia() *cmn.Media
+	GetMediaID() uint
+	ToMediaResponse() cmn.MediaResponse
 }
 
 func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {

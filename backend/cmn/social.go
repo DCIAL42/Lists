@@ -4,14 +4,21 @@ import "time"
 
 type Rating struct {
 	Model
-	UserID  string  `json:"user_id"`
-	MediaID uint    `json:"media_id"`
-	Rating  float32 `json:"rating"`
+	UserID  string `gorm:"not null;uniqueIndex:idx_user_rating"`
+	MediaID uint   `gorm:"not null;uniqueIndex:idx_user_rating"`
+	Rating  float32
 }
 
 type RatingResponse struct {
 	ID     uint    `json:"id,omitempty"`
 	Rating float32 `json:"rating,omitempty"`
+}
+
+func (r *Rating) ToRatingResponse() RatingResponse {
+	return RatingResponse{
+		ID:     r.ID,
+		Rating: r.Rating,
+	}
 }
 
 type Review struct {

@@ -2,11 +2,15 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"strconv"
 
 	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
+	"gorm.io/gorm"
 )
 
 func NextPage(originalURL string) string {
@@ -50,4 +54,58 @@ func Search(ctx context.Context, c cmn.Client, params map[string]string) (res cm
 	res.Next = NextPage(originalURL)
 
 	return
+}
+
+type ResponseItem[T db.ExternalItem] interface {
+	ToDBItem() T
+}
+
+type ResponseData[T db.ExternalItem, U ResponseItem[T]] interface {
+	Items() []U
+}
+
+func TestRead[T db.ExternalItem, R ResponseItem[T], D ResponseData[T, R]](DB *gorm.DB, resp *http.Response, userID string) (res cmn.SearchResult, err error) {
+	var data D
+	err = json.NewDecoder(resp.Body).Decode(&data)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
+
+	defer resp.Body.Close()
+
+	responseItems := data.Items()
+
+	items := make([]T, 0, len(responseItems))
+	mediaIDs := make([]uint, 0, len(responseItems))
+
+	for _, r := range responseItems {
+		item := r.ToDBItem()
+		if _, err = db.TrySaveItem(DB, item); err != nil {
+			return
+		}
+		items = append(items, item)
+		mediaIDs = append(mediaIDs, item.GetMediaID())
+	}
+
+	var tracking []cmn.TrackingItem
+
+	if err = DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
+		return
+	}
+
+	trackingByMediaID := make(map[uint]*cmn.TrackingItem, len(tracking))
+	for i := range tracking {
+		trackingByMediaID[tracking[i].MediaID] = &tracking[i]
+	}
+
+	results := make([]cmn.MediaResponse, 0, len(items))
+
+	for i := range items {
+		items[i].GetMedia().Tracking = trackingByMediaID[items[i].GetMediaID()]
+		results = append(results, items[i].ToMediaResponse())
+	}
+
+	return cmn.SearchResult{Items: results}, nil
 }

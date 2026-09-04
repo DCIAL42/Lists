@@ -14,7 +14,6 @@ import (
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
-	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 )
 
@@ -23,7 +22,7 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (a *Album) toMediaResponse() (res cmn.MediaResponse) {
+func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
 	res = cmn.MediaResponse{
 		ID:    a.MediaID,
 		Type:  a.Media.Type,
@@ -41,16 +40,12 @@ func (a *Album) toMediaResponse() (res cmn.MediaResponse) {
 		}
 	}
 	if a.Media.Rating != nil {
-		rating := *a.Media.Rating
-		res.Rating = cmn.RatingResponse{
-			ID:     rating.ID,
-			Rating: rating.Rating,
-		}
+		res.Rating = (*a.Media.Rating).ToRatingResponse()
 	}
 	return
 }
 
-func (r *AlbumResponse) toAlbum() Album {
+func (r *AlbumResponse) toAlbum() *Album {
 	var artist string
 	if len(r.Artists) > 0 {
 		artist = r.Artists[0].Name
@@ -60,7 +55,7 @@ func (r *AlbumResponse) toAlbum() Album {
 		cover = r.Images[0].URL
 	}
 
-	return Album{
+	return &Album{
 		Artist: artist,
 		Media: cmn.Media{
 			Type:       cmn.TypeAlbum,
@@ -79,53 +74,28 @@ func (a Album) GetExternalID() string {
 	return a.Media.ExternalID
 }
 
+func (a Album) GetMediaID() uint {
+	return a.MediaID
+}
+
+func (a Album) GetMedia() *cmn.Media {
+	return &a.Media
+}
+
 func (a Album) GetModel() cmn.Model {
 	return a.Model
 }
 
+func (r Response) Items() []AlbumResponse {
+	return r.Albums.Items
+}
+
+func (a AlbumResponse) ToDBItem() *Album {
+	return a.toAlbum()
+}
+
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	var data Response
-
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	defer resp.Body.Close()
-
-	albums := make([]Album, 0, len(data.Albums.Items))
-	mediaIDs := make([]uint, 0, len(data.Albums.Items))
-
-	for _, r := range data.Albums.Items {
-		album := r.toAlbum()
-		if _, err = db.TrySaveItem(c.DB, &album); err != nil {
-			return
-		}
-		albums = append(albums, album)
-		mediaIDs = append(mediaIDs, album.MediaID)
-	}
-
-	var tracking []cmn.TrackingItem
-
-	if err = c.DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
-		return
-	}
-
-	trackingByMediaID := make(map[uint]*cmn.TrackingItem, len(tracking))
-	for i := range tracking {
-		trackingByMediaID[tracking[i].MediaID] = &tracking[i]
-	}
-
-	results := make([]cmn.MediaResponse, 0, len(albums))
-
-	for i := range albums {
-		albums[i].Media.Tracking = trackingByMediaID[albums[i].MediaID]
-		results = append(results, albums[i].toMediaResponse())
-	}
-
-	return cmn.SearchResult{Items: results}, nil
+	return client.TestRead[*Album, AlbumResponse, Response](c.DB, resp, userID)
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -244,7 +214,7 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return
 	}
-	return item.toMediaResponse(), nil
+	return item.ToMediaResponse(), nil
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
@@ -255,5 +225,5 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 		return
 	}
 	item.Media = m
-	return item.toMediaResponse(), nil
+	return item.ToMediaResponse(), nil
 }

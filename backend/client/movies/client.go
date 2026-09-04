@@ -2,24 +2,21 @@ package movies
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
-	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 )
 
-func (r *MovieResponse) toMovie() Movie {
-	return Movie{
+func (r *MovieResponse) toMovie() *Movie {
+	return &Movie{
 		Popularity: r.Popularity,
 		Media: cmn.Media{
 			Type:       cmn.TypeMovie,
@@ -30,7 +27,7 @@ func (r *MovieResponse) toMovie() Movie {
 	}
 }
 
-func (m *Movie) toMediaResponse() (res cmn.MediaResponse) {
+func (m Movie) ToMediaResponse() (res cmn.MediaResponse) {
 	res = cmn.MediaResponse{
 		ID:    m.MediaID,
 		Type:  cmn.TypeMovie,
@@ -48,17 +45,21 @@ func (m *Movie) toMediaResponse() (res cmn.MediaResponse) {
 		}
 	}
 	if m.Media.Rating != nil {
-		rating := *m.Media.Rating
-		res.Rating = cmn.RatingResponse{
-			ID:     rating.ID,
-			Rating: rating.Rating,
-		}
+		res.Rating = (*m.Media.Rating).ToRatingResponse()
 	}
 	return
 }
 
 func (m Movie) GetID() uint {
 	return m.ID
+}
+
+func (m Movie) GetMediaID() uint {
+	return m.MediaID
+}
+
+func (m Movie) GetMedia() *cmn.Media {
+	return &m.Media
 }
 
 func (m Movie) GetExternalID() string {
@@ -69,51 +70,16 @@ func (m Movie) GetModel() cmn.Model {
 	return m.Model
 }
 
+func (r Response) Items() []MovieResponse {
+	return r.Results
+}
+
+func (m MovieResponse) ToDBItem() *Movie {
+	return m.toMovie()
+}
+
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	var data Response
-
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	sort.Slice(data.Results, func(i, j int) bool {
-		return data.Results[i].Popularity > data.Results[j].Popularity
-	})
-
-	movies := make([]Movie, 0, len(data.Results))
-	mediaIDs := make([]uint, 0, len(data.Results))
-
-	for _, r := range data.Results {
-		var movie Movie = r.toMovie()
-		if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
-			return
-		}
-		movies = append(movies, movie)
-		mediaIDs = append(mediaIDs, movie.MediaID)
-	}
-
-	var tracking []cmn.TrackingItem
-
-	if err = c.DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
-		return
-	}
-
-	trackingByMediaID := make(map[uint]*cmn.TrackingItem, len(tracking))
-	for i := range tracking {
-		trackingByMediaID[tracking[i].MediaID] = &tracking[i]
-	}
-
-	results := make([]cmn.MediaResponse, 0, len(movies))
-
-	for i := range movies {
-		movies[i].Media.Tracking = trackingByMediaID[movies[i].MediaID]
-		results = append(results, movies[i].toMediaResponse())
-	}
-
-	return cmn.SearchResult{Items: results}, nil
+	return client.TestRead[*Movie, MovieResponse, Response](c.DB, resp, userID)
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -188,7 +154,7 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return
 	}
-	return item.toMediaResponse(), nil
+	return item.ToMediaResponse(), nil
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
@@ -199,5 +165,5 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 		return
 	}
 	item.Media = m
-	return item.toMediaResponse(), nil
+	return item.ToMediaResponse(), nil
 }
