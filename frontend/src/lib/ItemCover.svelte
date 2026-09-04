@@ -16,6 +16,7 @@
     import type { HTMLAttributes } from "svelte/elements";
     import Menu from "./icons/Menu.svelte";
     import { tick } from "svelte";
+    import Cross from "./icons/Cross.svelte";
 
     let {
         item = $bindable(),
@@ -37,6 +38,25 @@
 
     let tracking = $derived(item.tracking?.status);
     let showMenu = $state(false);
+
+    let menuActions = $derived([
+        {
+            text:
+                tracking === "backlog"
+                    ? "Remove from backlog"
+                    : "Add to backlog",
+            onclick: () => handleTrackingChange("backlog"),
+        },
+        {
+            text:
+                tracking === "paused" ? "Remove from paused" : "Add to paused",
+            onclick: () => handleTrackingChange("paused"),
+        },
+        {
+            text: tracking === "done" ? "Remove from done" : "Add to done",
+            onclick: () => handleTrackingChange("done"),
+        },
+    ]);
 
     async function removeTracking() {
         if (item.tracking === undefined) {
@@ -95,11 +115,26 @@
         item.tracking = data;
     }
 
+    let newRating = $state(item.rating.rating ?? 0);
+
+    async function deleteRating() {
+        const res = await fetch(`/api/rating/${item.rating.id}`, {
+            method: "DELETE",
+        });
+        if (res.ok) {
+            item.rating = {};
+            newRating = 0;
+        }
+    }
+
     async function submitRating() {
+        if (newRating === item.rating.rating) {
+            await deleteRating();
+            return;
+        }
         if (item.rating.id !== undefined) {
-            console.log("patching");
             const payload = {
-                rating: item.rating.rating,
+                rating: newRating,
             };
             const res = await fetch(`/api/rating/${item.rating.id}`, {
                 method: "PATCH",
@@ -109,13 +144,12 @@
             if (!res.ok) return;
 
             const data: Rating = await res.json();
-            console.log(data);
             item.rating = data;
             return;
         }
         const payload = {
             media_id: item.id,
-            rating: item.rating.rating,
+            rating: newRating,
         };
         const res = await fetch("/api/rating", {
             method: "POST",
@@ -170,29 +204,35 @@
                 <div class="slider-wrapper">
                     <span
                         class="slider-value"
-                        style={`left: ${item.rating.rating * 10}%`}
+                        style={`left: ${newRating ?? 0 * 10}%`}
                     >
-                        {item.rating.rating}</span
-                    >
+                        {newRating}
+                    </span>
 
                     <input
                         type="range"
-                        bind:value={item.rating.rating}
+                        bind:value={newRating}
                         min={0}
                         max={10}
                         defaultvalue={0}
                         step={0.5}
                     />
                 </div>
-                <Button variant="ghost" onclick={submitRating}><Check /></Button
-                >
+                <Button variant="ghost" onclick={submitRating}>
+                    {#if newRating === item.rating.rating}
+                        <Cross />
+                    {:else}
+                        <Check />
+                    {/if}
+                </Button>
             </div>
-            {#each ["Add to backlog", "Add to paused", "Add to done", "Add review"] as text}
+            {#each menuActions as button}
                 <Button
                     variant="ghost"
                     style="border-top: 1px solid var(--primary-foreground); "
+                    onclick={button.onclick}
                 >
-                    {text}
+                    {button.text}
                 </Button>
             {/each}
         {/if}

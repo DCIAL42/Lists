@@ -103,5 +103,5 @@ export interface RatingPayload {
 
 export interface Rating {
     id?: number
-    rating: number
+    rating?: number
 }

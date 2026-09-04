@@ -20,3 +20,20 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
 
     return json(data)
 }
+
+export const DELETE: RequestHandler = async ({ params, locals }) => {
+    const token = await locals.auth().getToken();
+    const url = `${env.BACKEND_URL}/rating/${params.id}`
+
+    const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        }
+    })
+
+    const data = await res.json()
+
+    return json(data)
+}
