@@ -191,15 +191,15 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		c.IndentedJSON(http.StatusOK, list)
 	})
-
-	r.GET("/dev", func(c *gin.Context) {
-		items, err := s.getAllTrackingItems()
-
-		if err != nil {
-			cmn.HandleError(c, err)
-			return
-		}
-
-		c.IndentedJSON(http.StatusOK, items)
-	})
+	//
+	// r.GET("/dev", func(c *gin.Context) {
+	// 	items, err := s.getAllTrackingItems()
+	//
+	// 	if err != nil {
+	// 		cmn.HandleError(c, err)
+	// 		return
+	// 	}
+	//
+	// 	c.IndentedJSON(http.StatusOK, items)
+	// })
 }

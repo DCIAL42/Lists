@@ -142,15 +142,15 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 	return
 }
 
-func (s *Service) getAllTrackingItems() (res []cmn.TrackingItem, err error) {
-	res = make([]cmn.TrackingItem, 0)
-
-	result := s.DB.Find(&res)
-
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
-		return
-	}
-
-	return
-}
+// func (s *Service) getAllTrackingItems() (res []cmn.TrackingItem, err error) {
+// 	res = make([]cmn.TrackingItem, 0)
+//
+// 	result := s.DB.Find(&res)
+//
+// 	if result.Error != nil {
+// 		err = &cmn.HttpError{Code: http.StatusNotFound, Message: "No items in tracking list"}
+// 		return
+// 	}
+//
+// 	return
+// }
