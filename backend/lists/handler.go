@@ -152,7 +152,6 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 	protected.Use(middleware.RequireUser())
 
 	r.GET("/lists", func(c *gin.Context) {
-		// userID := c.MustGet("userID").(string)
 		username := c.Param("username")
 		user, err := users.GetUserByUsername(username)
 		if err != nil {
@@ -175,7 +174,7 @@ func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {
 		next := cmn.NextPage(c.Request.URL)
 		switch format {
 		case "preview":
-			res, err := s.getListsPreviewByUser(user.ID, &Settings{Page: page})
+			res, err := s.getListsPreviewByUser(user.ID, &ListQueryCfg{Page: page})
 			res.Next = next
 
 			if err != nil {

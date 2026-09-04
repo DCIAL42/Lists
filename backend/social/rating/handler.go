@@ -68,6 +68,25 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 
 		c.IndentedJSON(http.StatusOK, res)
 	})
+
+	protected.DELETE("/:id", func(c *gin.Context) {
+		userID := c.MustGet("userID").(string)
+		id, err := cmn.ParseParam[uint](c, "id")
+
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "bad id"})
+			return
+		}
+
+		res, err := s.deleteRating(id, userID)
+
+		if err != nil {
+			cmn.HandleError(c, err)
+			return
+		}
+
+		c.IndentedJSON(http.StatusOK, res)
+	})
 }
 
 func (s *Service) SetupUserRoutes(r *gin.RouterGroup) {

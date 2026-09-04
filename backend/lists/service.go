@@ -60,14 +60,6 @@ func (s *Service) toListResponse(list List, userID string) (res ListResponse, er
 			return res, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "Error with api"}
 		}
 
-		// if userID != "" {
-		// 	resolvedItem.Rating, err = s.GetRating(cmn.Rating{UserID: userID, MediaID: resolvedItem.ID})
-		//
-		// 	if err != nil {
-		// 		fmt.Println(err)
-		// 	}
-		// }
-
 		resolvedItems = append(resolvedItems, resolvedItem)
 	}
 
@@ -205,12 +197,7 @@ func (s *Service) updateList(id uint, userID string, req ListRequest) (res ListR
 	return s.toListResponse(list, userID)
 }
 
-type ListsResponse interface {
-	ListsFullResponse
-	ListsPreviewResponse
-}
-
-func (s *Service) getListsPreviewByUser(userID string, cfg *Settings) (res ListsPreviewResponse, err error) {
+func (s *Service) getListsPreviewByUser(userID string, cfg *ListQueryCfg) (res ListsPreviewResponse, err error) {
 	if cfg.Page < 1 {
 		cfg.Page = 1
 	}

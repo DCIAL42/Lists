@@ -24,7 +24,7 @@ type ListItem struct {
 
 type List struct {
 	cmn.Model
-	UserID string
+	UserID string `gorm:"not null"`
 	Title  string
 	Items  []ListItem `gorm:"foreignKey:ListID"`
 	Cover  string
