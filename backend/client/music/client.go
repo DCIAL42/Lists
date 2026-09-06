@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
@@ -24,89 +23,68 @@ type TokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
-	tracks := make([]TrackResponse, 0, len(a.Tracks))
-	for _, track := range a.Tracks {
-		tracks = append(tracks, TrackResponse{
-			ID:       track.ID,
-			Title:    track.Media.Title,
-			Duration: track.Duration,
-		})
-	}
-	res = cmn.MediaResponse{
-		ID:    a.MediaID,
-		Type:  a.Media.Type,
-		Title: a.Media.Title,
-		Cover: a.Media.Cover,
-		Data: AlbumData{
-			Artist: a.Artist,
-			Tracks: tracks,
-		},
-	}
-	if a.Media.Tracking != nil {
-		tracking := *a.Media.Tracking
-		res.Tracking = cmn.TrackingResponse{
-			ID:     tracking.ID,
-			Status: tracking.Status,
-		}
-	}
-	if a.Media.Rating != nil {
-		res.Rating = (*a.Media.Rating).ToRatingResponse()
-	}
-	return
-}
-
-func (r *AlbumSearchResponse) toAlbum() *Album {
-	var artist string
+func (r *AlbumSearchResponse) toAlbum() Album {
+	var artist ArtistAPIResponse
 	if len(r.Artists) > 0 {
-		artist = r.Artists[0].Name
+		artist = r.Artists[0]
 	}
 	var cover string
 	if len(r.Images) > 0 {
 		cover = r.Images[0].URL
 	}
 
-	return &Album{
-		Artist: artist,
+	res := Album{
+		Artist: artist.toArtist(),
 		Media: cmn.Media{
 			Type:       cmn.TypeAlbum,
 			ExternalID: r.ExternalID,
-			Title:      r.Title,
+			Name:       r.Name,
 			Cover:      cover,
 		},
 	}
-}
 
-func (a Album) GetID() uint {
-	return a.ID
-}
-
-func (a Album) GetExternalID() string {
-	return a.Media.ExternalID
-}
-
-func (a Album) GetMediaID() uint {
-	return a.MediaID
-}
-
-func (a Album) GetMedia() *cmn.Media {
-	return &a.Media
-}
-
-func (a Album) GetModel() cmn.Model {
-	return a.Model
+	return res
 }
 
 func (r SearchResponse) Items() []AlbumSearchResponse {
 	return r.Albums.Items
 }
 
-func (a AlbumSearchResponse) ToDBItem() *Album {
-	return a.toAlbum()
-}
-
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	return client.TestRead[*Album, AlbumSearchResponse, SearchResponse](c.DB, resp, userID)
+	var data SearchResponse
+
+	err = json.NewDecoder(resp.Body).Decode(&data)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
+
+	albums := make([]Album, 0, len(data.Albums.Items))
+	mediaIDs := make([]uint, 0, len(data.Albums.Items))
+
+	for _, r := range data.Albums.Items {
+		album := r.toAlbum()
+		if _, err = db.TrySaveItem(c.DB, &album.Artist); err != nil {
+			return
+		}
+		if _, err = db.TrySaveItem(c.DB, &album); err != nil {
+			return
+		}
+		albums = append(albums, album)
+		mediaIDs = append(mediaIDs, album.MediaID)
+	}
+
+	trackingByMediaID, err := db.TrackingFromMediaIDs(c.DB, mediaIDs, userID)
+
+	results := make([]cmn.MediaResponse, 0, len(albums))
+
+	for i := range albums {
+		albums[i].Media.Tracking = trackingByMediaID[albums[i].MediaID]
+		results = append(results, albums[i].ToMediaResponse())
+	}
+
+	return cmn.SearchResult{Items: results}, nil
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -120,7 +98,7 @@ func (c *Client) BuildURL(params map[string]string) string {
 		page = 0
 	}
 	params["offset"] = strconv.Itoa(page * 10)
-	params["fields"] = "albums(items(id,name,artists(name),images))"
+	params["fields"] = "albums(items(id,name,artists(id,name,images),images))"
 
 	for k, v := range params {
 		query.Set(k, v)
@@ -229,74 +207,27 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
-	c.FetchTracks(m.ID)
-	var item Album
-	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Tracks.Media").First(&item)
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
-		return
-	}
-	item.Media = m
-	return item.ToMediaResponse(), nil
-}
-
-func (c *Client) FetchTracks(mediaID uint) error {
-	var track Track
-	result := c.DB.Where("album_id = (?)", c.DB.Model(&Album{}).Select("id").Where("media_id = ?", mediaID)).First(&track)
-	if result.Error == nil && time.Since(track.UpdatedAt) < 30*24*time.Hour {
-		return nil
-	}
-	var item Album
-	if err := c.DB.Where("media_id = ?", mediaID).Preload("Media").First(&item).Error; err != nil {
-		return err
-	}
-
-	url := c.baseURL + "/albums/" + item.Media.ExternalID + "/tracks"
-	resp, err := c.TryRequest(context.Background(), url)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	var body TracksResponse
-
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		slog.Error(err.Error())
-		return err
-	}
-
-	for _, t := range body.Items {
-		track := Track{
-			AlbumID:  item.ID,
-			Duration: t.Duration,
-			Media: cmn.Media{
-				ExternalID: t.ExternalID,
-				Title:      t.Title,
-			},
+	switch m.Type {
+	case cmn.TypeAlbum:
+		c.FetchTracks(m.ID)
+		var item Album
+		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Tracks.Media").Preload("Artist.Media").First(&item)
+		if result.Error != nil {
+			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+			return
 		}
-		_, err := db.TrySaveItem(c.DB, &track)
-		if err != nil {
-			return err
+		item.Media = m
+		err = c.FetchArtist(item.Artist.Media.ExternalID)
+		return item.ToMediaResponse(), nil
+	case cmn.TypeArtist:
+		var item Artist
+		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Albums.Media").First(&item)
+		if result.Error != nil {
+			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
+			return
 		}
+		item.Media = m
+		return item.ToMediaResponse(), nil
 	}
-	return nil
-}
-
-func (t Track) GetExternalID() string {
-	return t.Media.ExternalID
-}
-func (t Track) GetModel() cmn.Model {
-	return t.Model
-}
-func (t Track) GetMedia() *cmn.Media {
-	return &cmn.Media{}
-}
-func (t Track) GetMediaID() uint {
-	return 0
-}
-func (t Track) ToMediaResponse() cmn.MediaResponse {
-	return cmn.MediaResponse{}
+	return cmn.MediaResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "invalid type"}
 }

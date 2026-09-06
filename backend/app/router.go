@@ -65,6 +65,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&cmn.Media{},
 		&music.Album{},
 		&music.Track{},
+		&music.Artist{},
 		&movies.Movie{},
 		&cmn.Like{},
 		&cmn.Rating{},
@@ -74,9 +75,12 @@ func SetupRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 
+	musicClient := music.NewClient(httpClient, db)
 	clients := map[cmn.MediaType]cmn.Client{
-		cmn.TypeAlbum: music.NewClient(httpClient, db),
-		cmn.TypeMovie: movies.NewClient(httpClient, db),
+		cmn.TypeAlbum:  musicClient,
+		cmn.TypeArtist: musicClient,
+		cmn.TypeTrack:  musicClient,
+		cmn.TypeMovie:  movies.NewClient(httpClient, db),
 	}
 
 	userGroup := api.Group("/users")

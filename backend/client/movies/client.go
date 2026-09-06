@@ -2,26 +2,29 @@ package movies
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 )
 
-func (r *MovieResponse) toMovie() *Movie {
-	return &Movie{
+func (r *MovieResponse) toMovie() Movie {
+	return Movie{
 		Popularity: r.Popularity,
 		Media: cmn.Media{
 			Type:       cmn.TypeMovie,
 			ExternalID: strconv.Itoa(r.ExternalID),
-			Title:      r.Title,
+			Name:       r.Title,
 			Cover:      "https://image.tmdb.org/t/p/w500" + r.Poster,
 		},
 	}
@@ -31,7 +34,7 @@ func (m Movie) ToMediaResponse() (res cmn.MediaResponse) {
 	res = cmn.MediaResponse{
 		ID:    m.MediaID,
 		Type:  cmn.TypeMovie,
-		Title: m.Media.Title,
+		Name:  m.Media.Name,
 		Cover: m.Media.Cover,
 		Data: MovieData{
 			Popularity: m.Popularity,
@@ -74,12 +77,42 @@ func (r Response) Items() []MovieResponse {
 	return r.Results
 }
 
-func (m MovieResponse) ToDBItem() *Movie {
-	return m.toMovie()
-}
-
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	return client.TestRead[*Movie, MovieResponse, Response](c.DB, resp, userID)
+	var data Response
+
+	err = json.NewDecoder(resp.Body).Decode(&data)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return
+	}
+
+	sort.Slice(data.Results, func(i, j int) bool {
+		return data.Results[i].Popularity > data.Results[j].Popularity
+	})
+
+	movies := make([]Movie, 0, len(data.Results))
+	mediaIDs := make([]uint, 0, len(data.Results))
+
+	for _, r := range data.Results {
+		movie := r.toMovie()
+		if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
+			return
+		}
+		movies = append(movies, movie)
+		mediaIDs = append(mediaIDs, movie.MediaID)
+	}
+
+	trackingByMediaID, err := db.TrackingFromMediaIDs(c.DB, mediaIDs, userID)
+
+	results := make([]cmn.MediaResponse, 0, len(movies))
+
+	for i := range movies {
+		movies[i].Media.Tracking = trackingByMediaID[movies[i].MediaID]
+		results = append(results, movies[i].ToMediaResponse())
+	}
+
+	return cmn.SearchResult{Items: results}, nil
 }
 
 func (c *Client) BuildURL(params map[string]string) string {

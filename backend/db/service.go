@@ -51,6 +51,20 @@ func (s *DBService) GetMediaList(mediaIDs []uint, userID string) (res []cmn.Medi
 	return
 }
 
+func TrackingFromMediaIDs(DB *gorm.DB, mediaIDs []uint, userID string) (res map[uint]*cmn.TrackingItem, err error) {
+	var tracking []cmn.TrackingItem
+	if err = DB.Where("user_id = ?", userID).Where("media_id IN ?", mediaIDs).Find(&tracking).Error; err != nil {
+		return
+	}
+
+	res = make(map[uint]*cmn.TrackingItem, len(tracking))
+	for i := range tracking {
+		res[tracking[i].MediaID] = &tracking[i]
+	}
+
+	return
+}
+
 func (s *DBService) ToMediaResponse(m cmn.Media) (res cmn.MediaResponse, err error) {
 	t := m.Type
 	c, ok := s.Clients[t]
@@ -102,15 +116,7 @@ func (db *DBService) GetPage(page uint, order func(*gorm.DB) *gorm.DB, dst any) 
 	return result, uint(count)
 }
 
-type ExternalItem interface {
-	GetExternalID() string
-	GetModel() cmn.Model
-	GetMedia() *cmn.Media
-	GetMediaID() uint
-	ToMediaResponse() cmn.MediaResponse
-}
-
-func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
+func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	var media cmn.Media
 
 	mediaResult := DB.Where("external_id = ?", dst.GetExternalID()).First(&media)
@@ -130,8 +136,12 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if time.Since(existing.GetModel().UpdatedAt) > time.Second {
+		if time.Since(existing.GetModel().UpdatedAt) > time.Hour {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
+				return false, err
+			}
+
+			if err := DB.Model(&media).Updates(dst.GetMedia()).Error; err != nil {
 				return false, err
 			}
 

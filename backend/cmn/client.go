@@ -5,6 +5,14 @@ import (
 	"net/http"
 )
 
+type ExternalItem interface {
+	GetExternalID() string
+	GetModel() Model
+	GetMedia() *Media
+	GetMediaID() uint
+	ToMediaResponse() MediaResponse
+}
+
 type Client interface {
 	BuildURL(map[string]string) string
 	TryRequest(context.Context, string) (*http.Response, error)

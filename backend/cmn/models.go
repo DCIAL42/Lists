@@ -9,8 +9,10 @@ import (
 type MediaType string
 
 const (
-	TypeAlbum MediaType = "album"
-	TypeMovie MediaType = "movie"
+	TypeAlbum  MediaType = "album"
+	TypeMovie  MediaType = "movie"
+	TypeArtist MediaType = "artist"
+	TypeTrack  MediaType = "track"
 )
 
 type Model struct {
@@ -24,7 +26,7 @@ type Media struct {
 	Model
 	ExternalID string `gorm:"uniqueIndex;not null"`
 	Type       MediaType
-	Title      string
+	Name       string
 	Cover      string
 
 	Tracking *TrackingItem `gorm:"foreignKey:MediaID"`
@@ -34,7 +36,7 @@ type Media struct {
 type MediaResponse struct {
 	ID       uint             `json:"id"`
 	Type     MediaType        `json:"type"`
-	Title    string           `json:"title"`
+	Name     string           `json:"name"`
 	Cover    string           `json:"cover"`
 	Data     any              `json:"data"`
 	Tracking TrackingResponse `json:"tracking"`
