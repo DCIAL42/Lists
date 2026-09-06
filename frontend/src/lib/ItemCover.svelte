@@ -184,7 +184,13 @@
 <div class="cover" {...rest}>
     <img src={item.cover || "https://placehold.co/250"} alt="cover" />
 
-    <div class="hover details">
+    {#if item.rating.rating !== undefined}
+        <div class="hover details top">
+            <p>{item.rating.rating}/10</p>
+        </div>
+    {/if}
+
+    <div class="hover details bottom">
         <p>{item.title}</p>
     </div>
 
@@ -332,13 +338,19 @@
     }
 
     .details {
+        pointer-events: none;
         padding: 5px;
         p {
             margin: 0;
         }
-        top: 100%;
+        &.bottom {
+            top: 100%;
+            transform: translateY(-100%);
+        }
+        &.top {
+            top: 0;
+        }
         left: 0;
-        transform: translateY(-100%);
         color: var(--primary-foreground);
     }
 

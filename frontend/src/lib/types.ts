@@ -9,8 +9,15 @@ export interface Movie {
     popularity: number
 }
 
+export interface Track {
+    id: number
+    title: string
+    duration: number
+}
+
 export interface Album {
     artist: string
+    tracks: Track[]
 }
 
 export interface TrackingItem {

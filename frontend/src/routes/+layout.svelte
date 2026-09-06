@@ -17,5 +17,7 @@
     <Nav />
 
     <ModeWatcher />
-    {@render children()}
+    <div style="margin: 10px;">
+        {@render children()}
+    </div>
 </ClerkProvider>
