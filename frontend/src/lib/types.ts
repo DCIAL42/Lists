@@ -1,5 +1,5 @@
 export type TrackingStatus = "backlog" | "paused" | "done" | "none"
-export type MediaType = "album" | "movie" | "game" | "show"
+export type MediaType = "album" | "movie" | "game" | "show" | "artist" | "track"
 
 export type SearchResponse = {
     [K in MediaType]?: { next: string; items: MediaItem[] };
@@ -11,12 +11,12 @@ export interface Movie {
 
 export interface Track {
     id: number
-    title: string
+    name: string
     duration: number
 }
 
 export interface Album {
-    artist: string
+    artist: Artist
     tracks: Track[]
 }
 
@@ -25,12 +25,19 @@ export interface TrackingItem {
     status: TrackingStatus
 }
 
+export interface Artist {
+    id: number
+    name: string
+    cover: string
+    albums: MediaItem[]
+}
+
 export interface MediaItem {
     id: number
     type: MediaType
-    title: string
+    name: string
     cover: string
-    data: Movie | Album
+    data: Movie | Album | Artist
     tracking?: TrackingItem
     rating: Rating
 }

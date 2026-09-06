@@ -1,10 +1,8 @@
 <script lang="ts">
     import Button from "$lib/components/Button.svelte";
-    import ListPreview from "$lib/ListPreview.svelte";
-    import type { ListMeta } from "$lib/types";
     import { onMount } from "svelte";
 
-    let { lists }: { lists: ListMeta[] } = $props();
+    let { children } = $props();
     let container: HTMLDivElement;
     let canScrollLeft = $state(false);
     let canScrollRight = $state(false);
@@ -23,10 +21,8 @@
 </script>
 
 <div class="carousel">
-    <div class="lists" bind:this={container} onscroll={updateScrollButtons}>
-        {#each lists as list}
-            <ListPreview {list} />
-        {/each}
+    <div class="items" bind:this={container} onscroll={updateScrollButtons}>
+        {@render children()}
     </div>
     {#if canScrollRight}
         <div class="scroll right">
@@ -85,7 +81,7 @@
         }
     }
 
-    .lists {
+    .items {
         display: flex;
         overflow: auto;
         scroll-behavior: smooth;

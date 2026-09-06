@@ -182,7 +182,9 @@
 </script>
 
 <div class="cover" {...rest}>
-    <img src={item.cover || "https://placehold.co/250"} alt="cover" />
+    <a href={`/m/${item.id}`}>
+        <img src={item.cover || "https://placehold.co/250"} alt="cover" />
+    </a>
 
     {#if item.rating.rating !== undefined}
         <div class="hover details top">
@@ -191,7 +193,7 @@
     {/if}
 
     <div class="hover details bottom">
-        <p>{item.title}</p>
+        <p>{item.name}</p>
     </div>
 
     <div

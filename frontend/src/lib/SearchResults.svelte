@@ -22,16 +22,14 @@
 
 <div class="results" class:small {...rest}>
     <Tabs tabs={["movie", "album"]} bind:selected={tab} />
-    {#each items as item, i}
-        <a href={`/m/${item.id}`} style="text-decoration: none;">
-            <ItemCard
-                bind:item={items[i]}
-                {small}
-                {add}
-                onAddClick={handleAdd}
-                onmousedown={(e) => e.preventDefault()}
-            />
-        </a>
+    {#each items as _, i}
+        <ItemCard
+            bind:item={items[i]}
+            {small}
+            {add}
+            onAddClick={handleAdd}
+            onmousedown={(e) => e.preventDefault()}
+        />
     {/each}
 </div>
 
