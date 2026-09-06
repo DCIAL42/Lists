@@ -10,14 +10,14 @@ type Rating struct {
 }
 
 type RatingResponse struct {
-	ID     uint    `json:"id,omitempty"`
-	Rating float32 `json:"rating,omitempty"`
+	ID     uint     `json:"id,omitempty"`
+	Rating *float32 `json:"rating,omitempty"`
 }
 
 func (r *Rating) ToRatingResponse() RatingResponse {
 	return RatingResponse{
 		ID:     r.ID,
-		Rating: r.Rating,
+		Rating: &r.Rating,
 	}
 }
 

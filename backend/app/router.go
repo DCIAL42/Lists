@@ -64,6 +64,7 @@ func SetupRouter() (*gin.Engine, error) {
 		&follow.Follow{},
 		&cmn.Media{},
 		&music.Album{},
+		&music.Track{},
 		&movies.Movie{},
 		&cmn.Like{},
 		&cmn.Rating{},

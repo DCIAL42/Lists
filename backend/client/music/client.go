@@ -11,9 +11,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
+	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +25,14 @@ type TokenResponse struct {
 }
 
 func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
+	tracks := make([]TrackResponse, 0, len(a.Tracks))
+	for _, track := range a.Tracks {
+		tracks = append(tracks, TrackResponse{
+			ID:       track.ID,
+			Title:    track.Media.Title,
+			Duration: track.Duration,
+		})
+	}
 	res = cmn.MediaResponse{
 		ID:    a.MediaID,
 		Type:  a.Media.Type,
@@ -30,6 +40,7 @@ func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
 		Cover: a.Media.Cover,
 		Data: AlbumData{
 			Artist: a.Artist,
+			Tracks: tracks,
 		},
 	}
 	if a.Media.Tracking != nil {
@@ -45,7 +56,7 @@ func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
 	return
 }
 
-func (r *AlbumResponse) toAlbum() *Album {
+func (r *AlbumSearchResponse) toAlbum() *Album {
 	var artist string
 	if len(r.Artists) > 0 {
 		artist = r.Artists[0].Name
@@ -86,16 +97,16 @@ func (a Album) GetModel() cmn.Model {
 	return a.Model
 }
 
-func (r Response) Items() []AlbumResponse {
+func (r SearchResponse) Items() []AlbumSearchResponse {
 	return r.Albums.Items
 }
 
-func (a AlbumResponse) ToDBItem() *Album {
+func (a AlbumSearchResponse) ToDBItem() *Album {
 	return a.toAlbum()
 }
 
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	return client.TestRead[*Album, AlbumResponse, Response](c.DB, resp, userID)
+	return client.TestRead[*Album, AlbumSearchResponse, SearchResponse](c.DB, resp, userID)
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -218,12 +229,74 @@ func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
+	c.FetchTracks(m.ID)
 	var item Album
-	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").First(&item)
+	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Tracks.Media").First(&item)
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return
 	}
 	item.Media = m
 	return item.ToMediaResponse(), nil
+}
+
+func (c *Client) FetchTracks(mediaID uint) error {
+	var track Track
+	result := c.DB.Where("album_id = (?)", c.DB.Model(&Album{}).Select("id").Where("media_id = ?", mediaID)).First(&track)
+	if result.Error == nil && time.Since(track.UpdatedAt) < 30*24*time.Hour {
+		return nil
+	}
+	var item Album
+	if err := c.DB.Where("media_id = ?", mediaID).Preload("Media").First(&item).Error; err != nil {
+		return err
+	}
+
+	url := c.baseURL + "/albums/" + item.Media.ExternalID + "/tracks"
+	resp, err := c.TryRequest(context.Background(), url)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	var body TracksResponse
+
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+
+	for _, t := range body.Items {
+		track := Track{
+			AlbumID:  item.ID,
+			Duration: t.Duration,
+			Media: cmn.Media{
+				ExternalID: t.ExternalID,
+				Title:      t.Title,
+			},
+		}
+		_, err := db.TrySaveItem(c.DB, &track)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t Track) GetExternalID() string {
+	return t.Media.ExternalID
+}
+func (t Track) GetModel() cmn.Model {
+	return t.Model
+}
+func (t Track) GetMedia() *cmn.Media {
+	return &cmn.Media{}
+}
+func (t Track) GetMediaID() uint {
+	return 0
+}
+func (t Track) ToMediaResponse() cmn.MediaResponse {
+	return cmn.MediaResponse{}
 }

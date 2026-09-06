@@ -72,7 +72,7 @@ func (s *Service) createRating(userID string, req RatingRequest) (res cmn.Rating
 }
 
 func (s *Service) updateRating(id uint, userID string, req RatingRequest) (res cmn.RatingResponse, err error) {
-	result := s.DB.Model(&cmn.Rating{}).Where("id = ? AND user_id = ?", id, userID).Updates(req)
+	result := s.DB.Model(&cmn.Rating{}).Where("id = ? AND user_id = ?", id, userID).Update("rating", req.Rating)
 
 	if result.Error != nil {
 		return cmn.RatingResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to fetch rating"}
@@ -87,7 +87,7 @@ func (s *Service) updateRating(id uint, userID string, req RatingRequest) (res c
 
 	return cmn.RatingResponse{
 		ID:     rating.ID,
-		Rating: rating.Rating,
+		Rating: &rating.Rating,
 	}, nil
 }
 

@@ -130,7 +130,7 @@ func TrySaveItem[T ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if time.Since(existing.GetModel().UpdatedAt) > time.Hour*24 {
+		if time.Since(existing.GetModel().UpdatedAt) > time.Second {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
 				return false, err
 			}

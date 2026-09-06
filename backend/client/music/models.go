@@ -16,7 +16,7 @@ type Client struct {
 	headers      map[string]string
 }
 
-type AlbumResponse struct {
+type AlbumSearchResponse struct {
 	ExternalID string `json:"id"`
 	Title      string `json:"name"`
 	Artists    []struct {
@@ -27,15 +27,38 @@ type AlbumResponse struct {
 	} `json:"images"`
 }
 
-type Response struct {
+type SearchResponse struct {
 	Albums struct {
-		Items []AlbumResponse `json:"items"`
-		Next  string          `json:"next"`
+		Items []AlbumSearchResponse `json:"items"`
+		Next  string                `json:"next"`
 	} `json:"albums"`
 }
 
+type TracksResponse struct {
+	Items []struct {
+		ExternalID string `json:"id"`
+		Title      string `json:"name"`
+		Duration   uint   `json:"duration_ms"`
+	} `json:"items"`
+}
+
 type AlbumData struct {
-	Artist string `json:"artist"`
+	Artist string          `json:"artist"`
+	Tracks []TrackResponse `json:"tracks"`
+}
+
+type Track struct {
+	cmn.Model
+	MediaID  uint
+	Media    cmn.Media `gorm:"foreignKey:MediaID"`
+	AlbumID  uint
+	Duration uint
+}
+
+type TrackResponse struct {
+	ID       uint   `json:"id"`
+	Title    string `json:"title"`
+	Duration uint   `json:"duration"`
 }
 
 type Album struct {
@@ -43,4 +66,5 @@ type Album struct {
 	MediaID uint
 	Media   cmn.Media `gorm:"foreignKey:MediaID"`
 	Artist  string
+	Tracks  []Track `gorm:"foreignKey:AlbumID"`
 }

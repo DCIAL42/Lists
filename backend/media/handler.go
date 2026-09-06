@@ -9,10 +9,11 @@ import (
 )
 
 func (s *Service) SetupRoutes(r *gin.RouterGroup) {
-	protected := r.Group("/")
-	protected.Use(middleware.MaybeUser())
+	maybe := r.Group("/")
+	maybe.Use(middleware.MaybeUser())
 
-	r.GET("/:id", func(c *gin.Context) {
+	maybe.GET("/:id", func(c *gin.Context) {
+		userID := c.GetString("userID")
 		mediaID, err := cmn.ParseParam[uint](c, "id")
 
 		if err != nil {
@@ -20,7 +21,7 @@ func (s *Service) SetupRoutes(r *gin.RouterGroup) {
 			return
 		}
 
-		res, err := s.getMedia(mediaID, "")
+		res, err := s.getMedia(mediaID, userID)
 
 		if err != nil {
 			cmn.HandleError(c, err)
