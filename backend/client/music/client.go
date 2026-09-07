@@ -18,11 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type TokenResponse struct {
-	Token string `json:"access_token"`
-	Type  string `json:"token_type"`
-}
-
 func (r *AlbumSearchResponse) toAlbum() Album {
 	var artist ArtistAPIResponse
 	if len(r.Artists) > 0 {
@@ -44,10 +39,6 @@ func (r *AlbumSearchResponse) toAlbum() Album {
 	}
 
 	return res
-}
-
-func (r SearchResponse) Items() []AlbumSearchResponse {
-	return r.Albums.Items
 }
 
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
@@ -81,7 +72,7 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 
 	for i := range albums {
 		albums[i].Media.Tracking = trackingByMediaID[albums[i].MediaID]
-		results = append(results, albums[i].ToMediaResponse())
+		results = append(results, albums[i].toMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: results}, nil
@@ -132,7 +123,10 @@ func (c *Client) fetchToken(ctx context.Context) {
 	}
 	defer resp.Body.Close()
 
-	var tokenData TokenResponse
+	var tokenData struct {
+		Token string `json:"access_token"`
+		Type  string `json:"token_type"`
+	}
 
 	err = json.NewDecoder(resp.Body).Decode(&tokenData)
 	if err != nil {
@@ -196,16 +190,6 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 	return client.Search(ctx, c, params)
 }
 
-func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
-	var item Album
-	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
-		return
-	}
-	return item.ToMediaResponse(), nil
-}
-
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 	switch m.Type {
 	case cmn.TypeAlbum:
@@ -218,7 +202,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 		}
 		item.Media = m
 		err = c.FetchArtist(item.Artist.Media.ExternalID)
-		return item.ToMediaResponse(), nil
+		return item.toMediaResponse(), nil
 	case cmn.TypeArtist:
 		var item Artist
 		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Albums.Media").First(&item)
@@ -227,7 +211,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 			return
 		}
 		item.Media = m
-		return item.ToMediaResponse(), nil
+		return item.toMediaResponse(), nil
 	}
 	return cmn.MediaResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "invalid type"}
 }

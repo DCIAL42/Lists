@@ -56,19 +56,19 @@ func (a *ArtistAPIResponse) toArtist() Artist {
 func (a Artist) GetExternalID() string {
 	return a.Media.ExternalID
 }
-func (a Artist) GetModel() cmn.Model {
-	return a.Model
+func (a Artist) GetID() uint {
+	return a.ID
+}
+func (a Artist) ShouldUpdate() bool {
+	return db.DefaultShouldUpdate(a.Media.UpdatedAt)
 }
 func (a Artist) GetMedia() *cmn.Media {
 	return &a.Media
 }
-func (a Artist) GetMediaID() uint {
-	return a.MediaID
-}
-func (a Artist) ToMediaResponse() cmn.MediaResponse {
+func (a Artist) toMediaResponse() cmn.MediaResponse {
 	albums := make([]cmn.MediaResponse, 0)
 	for _, album := range a.Albums {
-		albums = append(albums, album.ToMediaResponse())
+		albums = append(albums, album.toMediaResponse())
 	}
 	res := cmn.MediaResponse{
 		ID:    a.Media.ID,

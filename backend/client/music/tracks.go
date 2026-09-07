@@ -26,6 +26,10 @@ type Track struct {
 	Duration uint
 }
 
+type TrackData struct {
+	Duration uint
+}
+
 type TrackResponse struct {
 	ID       uint   `json:"id"`
 	Name     string `json:"name"`
@@ -35,18 +39,37 @@ type TrackResponse struct {
 func (t Track) GetExternalID() string {
 	return t.Media.ExternalID
 }
-func (t Track) GetModel() cmn.Model {
-	return t.Model
+
+func (t Track) GetID() uint {
+	return t.ID
 }
+
+func (t *Track) ShouldUpdate() bool {
+	return db.DefaultShouldUpdate(t.Model.UpdatedAt)
+}
+
 func (t Track) GetMedia() *cmn.Media {
 	return &t.Media
 }
-func (t Track) GetMediaID() uint {
-	return t.MediaID
-}
-func (t Track) ToMediaResponse() cmn.MediaResponse {
-	return cmn.MediaResponse{}
-}
+
+// func (t Track) toMediaResponse() cmn.MediaResponse {
+// 	res := cmn.MediaResponse{
+// 		ID:    t.ID,
+// 		Type:  t.Media.Type,
+// 		Name:  t.Media.Name,
+// 		Cover: t.Media.Cover,
+// 		Data: TrackData{
+// 			Duration: t.Duration,
+// 		},
+// 	}
+// 	if t.Media.Tracking != nil {
+// 		res.Tracking = (*t.Media.Tracking).ToTrackingResponse()
+// 	}
+// 	if t.Media.Rating != nil {
+// 		res.Rating = (*t.Media.Rating).ToRatingResponse()
+// 	}
+// 	return res
+// }
 
 func (c *Client) FetchTracks(albumMediaID uint) error {
 	var track Track

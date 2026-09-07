@@ -20,24 +20,6 @@ func NewService(clients map[cmn.MediaType]cmn.Client, DB *gorm.DB) Service {
 	}
 }
 
-func AddTrackingInfo(db *gorm.DB, items []cmn.MediaResponse, userID string) (res []cmn.MediaResponse, err error) {
-	res = make([]cmn.MediaResponse, 0, len(items))
-
-	for _, item := range items {
-		var tracking cmn.TrackingItem
-		db.Where("media_id = ? AND user_id = ?", item.ID, userID).Preload("Media").First(&tracking)
-
-		item.Tracking = cmn.TrackingResponse{
-			ID:     tracking.ID,
-			Status: tracking.Status,
-		}
-
-		res = append(res, item)
-	}
-
-	return
-}
-
 func (s *Service) Search(c *gin.Context) {
 	userID := c.GetString("userID")
 
@@ -91,9 +73,4 @@ func (s *Service) Search(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusOK, test)
-	// if len(results) == 1 {
-	// 	c.IndentedJSON(http.StatusOK, results[0])
-	// } else {
-	// 	c.IndentedJSON(http.StatusOK, results)
-	// }
 }

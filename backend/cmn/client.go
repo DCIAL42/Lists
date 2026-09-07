@@ -7,10 +7,9 @@ import (
 
 type ExternalItem interface {
 	GetExternalID() string
-	GetModel() Model
+	GetID() uint
+	ShouldUpdate() bool
 	GetMedia() *Media
-	GetMediaID() uint
-	ToMediaResponse() MediaResponse
 }
 
 type Client interface {
@@ -18,7 +17,6 @@ type Client interface {
 	TryRequest(context.Context, string) (*http.Response, error)
 	ReadToSearchResult(*http.Response, string) (SearchResult, error)
 	Search(ctx context.Context, params map[string]string) (SearchResult, error)
-	GetMedia(uint) (MediaResponse, error)
 	ResolveMedia(Media) (MediaResponse, error)
 }
 

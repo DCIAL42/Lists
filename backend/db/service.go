@@ -116,6 +116,10 @@ func (db *DBService) GetPage(page uint, order func(*gorm.DB) *gorm.DB, dst any) 
 	return result, uint(count)
 }
 
+func DefaultShouldUpdate(lastUpdated time.Time) bool {
+	return time.Since(lastUpdated) > 24*time.Hour
+}
+
 func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	var media cmn.Media
 
@@ -136,7 +140,7 @@ func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if time.Since(existing.GetModel().UpdatedAt) > time.Hour {
+		if dst.ShouldUpdate() {
 			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
 				return false, err
 			}
@@ -145,12 +149,12 @@ func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 				return false, err
 			}
 
-			if err := DB.Preload("Media").First(dst, existing.GetModel().ID).Error; err != nil {
+			if err := DB.Preload("Media").First(dst, existing.GetID()).Error; err != nil {
 				return false, err
 			}
 			return true, nil
 		}
-		if err := DB.Preload("Media").First(dst, existing.GetModel().ID).Error; err != nil {
+		if err := DB.Preload("Media").First(dst, existing.GetID()).Error; err != nil {
 			return false, err
 		}
 		return false, nil

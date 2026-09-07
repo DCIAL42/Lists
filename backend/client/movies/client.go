@@ -53,28 +53,20 @@ func (m Movie) ToMediaResponse() (res cmn.MediaResponse) {
 	return
 }
 
-func (m Movie) GetID() uint {
-	return m.ID
-}
-
-func (m Movie) GetMediaID() uint {
-	return m.MediaID
-}
-
-func (m Movie) GetMedia() *cmn.Media {
+func (m *Movie) GetMedia() *cmn.Media {
 	return &m.Media
 }
 
-func (m Movie) GetExternalID() string {
+func (m *Movie) GetExternalID() string {
 	return m.Media.ExternalID
 }
 
-func (m Movie) GetModel() cmn.Model {
-	return m.Model
+func (m *Movie) GetID() uint {
+	return m.ID
 }
 
-func (r Response) Items() []MovieResponse {
-	return r.Results
+func (m *Movie) ShouldUpdate() bool {
+	return db.DefaultShouldUpdate(m.Model.UpdatedAt)
 }
 
 func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
@@ -178,16 +170,6 @@ func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.Sear
 	maps.Copy(params, c.configParams)
 
 	return client.Search(ctx, c, params)
-}
-
-func (c *Client) GetMedia(ID uint) (res cmn.MediaResponse, err error) {
-	var item Movie
-	result := c.DB.Where("media_id = ?", ID).Preload("Media").First(&item)
-	if result.Error != nil {
-		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
-		return
-	}
-	return item.ToMediaResponse(), nil
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
