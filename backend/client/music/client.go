@@ -50,29 +50,39 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 		slog.Error(err.Error())
 		return
 	}
-
-	albums := make([]Album, 0, len(data.Albums.Items))
-	mediaIDs := make([]uint, 0, len(data.Albums.Items))
+	externalIDs := make([]string, 0, len(data.Albums.Items))
+	externalIDtoMovieResult := make(map[string]AlbumSearchResponse, len(data.Albums.Items))
 
 	for _, r := range data.Albums.Items {
-		album := r.toAlbum()
-		if _, err = db.TrySaveItem(c.DB, &album.Artist); err != nil {
-			return
-		}
-		if _, err = db.TrySaveItem(c.DB, &album); err != nil {
-			return
-		}
-		albums = append(albums, album)
-		mediaIDs = append(mediaIDs, album.MediaID)
+		externalIDs = append(externalIDs, r.ExternalID)
+		externalIDtoMovieResult[r.ExternalID] = r
+	}
+	var albums []Album
+	err = c.DB.Where("media_id IN (?)", c.DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&albums).Error
+	if err != nil {
+		return
 	}
 
-	trackingByMediaID, err := db.TrackingFromMediaIDs(c.DB, mediaIDs, userID)
+	externalIDtoMovie := make(map[string]Album, len(albums))
+	for _, a := range albums {
+		externalIDtoMovie[a.Media.ExternalID] = a
+	}
 
-	results := make([]cmn.MediaResponse, 0, len(albums))
+	results := make([]cmn.MediaResponse, 0, len(data.Albums.Items))
 
-	for i := range albums {
-		albums[i].Media.Tracking = trackingByMediaID[albums[i].MediaID]
-		results = append(results, albums[i].toMediaResponse())
+	for _, eID := range externalIDs {
+		album, ok := externalIDtoMovie[eID]
+		if !ok || album.ShouldUpdate() {
+			newAlbum := externalIDtoMovieResult[eID]
+			album = newAlbum.toAlbum()
+			if _, err = db.TrySaveItem(c.DB, &album.Artist); err != nil {
+				return
+			}
+			if _, err = db.TrySaveItem(c.DB, &album); err != nil {
+				return
+			}
+		}
+		results = append(results, album.toMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: results}, nil

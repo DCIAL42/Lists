@@ -97,14 +97,15 @@ func (s *Service) getTrackingList(pat TrackingItemQuery, page int) (res Tracking
 	var count int64
 	result := s.DB.
 		Model(&cmn.TrackingItem{}).
-		Preload("Media").
+		Joins("JOIN media on media.id = tracking_items.media_id").
 		Where(
-			"user_id = ? AND status = ? AND type IN ?",
+			"tracking_items.user_id = ? AND tracking_items.status = ? AND media.type IN ?",
 			pat.UserID,
 			pat.Status,
 			pat.Types,
 		).
-		Order("id desc").
+		Preload("Media").
+		Order("tracking_items.id desc").
 		Count(&count).
 		Offset((int(page) - 1) * int(s.PageSize)).
 		Limit(int(s.PageSize)).

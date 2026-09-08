@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sort"
 	"strconv"
 
 	"github.com/DCIAL42/lists/client"
@@ -79,29 +78,40 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 		return
 	}
 
-	sort.Slice(data.Results, func(i, j int) bool {
-		return data.Results[i].Popularity > data.Results[j].Popularity
-	})
-
-	movies := make([]Movie, 0, len(data.Results))
-	mediaIDs := make([]uint, 0, len(data.Results))
+	// sort.Slice(data.Results, func(i, j int) bool {
+	// 	return data.Results[i].Popularity > data.Results[j].Popularity
+	// })
+	externalIDs := make([]string, 0, len(data.Results))
+	externalIDtoMovieResult := make(map[string]MovieResponse, len(data.Results))
 
 	for _, r := range data.Results {
-		movie := r.toMovie()
-		if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
-			return
-		}
-		movies = append(movies, movie)
-		mediaIDs = append(mediaIDs, movie.MediaID)
+		externalIDs = append(externalIDs, strconv.Itoa(r.ExternalID))
+		externalIDtoMovieResult[strconv.Itoa(r.ExternalID)] = r
 	}
 
-	trackingByMediaID, err := db.TrackingFromMediaIDs(c.DB, mediaIDs, userID)
+	var movies []Movie
+	err = c.DB.Where("media_id IN (?)", c.DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&movies).Error
+	if err != nil {
+		return
+	}
 
-	results := make([]cmn.MediaResponse, 0, len(movies))
+	externalIDtoMovie := make(map[string]Movie, len(movies))
+	for _, movie := range movies {
+		externalIDtoMovie[movie.Media.ExternalID] = movie
+	}
 
-	for i := range movies {
-		movies[i].Media.Tracking = trackingByMediaID[movies[i].MediaID]
-		results = append(results, movies[i].ToMediaResponse())
+	results := make([]cmn.MediaResponse, 0, len(data.Results))
+
+	for _, eID := range externalIDs {
+		movie, ok := externalIDtoMovie[eID]
+		if !ok || movie.ShouldUpdate() {
+			newMovie := externalIDtoMovieResult[eID]
+			movie = newMovie.toMovie()
+			if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
+				return
+			}
+		}
+		results = append(results, movie.ToMediaResponse())
 	}
 
 	return cmn.SearchResult{Items: results}, nil
@@ -137,18 +147,18 @@ func NewClient(httpClient *http.Client, DB *gorm.DB) *Client {
 }
 
 func (c *Client) TryRequest(ctx context.Context, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
+
 	for range 3 {
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-
-		if err != nil {
-			slog.Error(err.Error())
-			return nil, err
-		}
-
-		for k, v := range c.headers {
-			req.Header.Set(k, v)
-		}
-
 		res, err := c.httpClient.Do(req)
 
 		if err != nil {

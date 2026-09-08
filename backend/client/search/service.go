@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
@@ -22,9 +21,6 @@ func NewService(clients map[cmn.MediaType]cmn.Client, DB *gorm.DB) Service {
 
 func (s *Service) Search(c *gin.Context) {
 	userID := c.GetString("userID")
-
-	results := make([]cmn.SearchResult, 0)
-	test := make(map[cmn.MediaType]cmn.SearchResult)
 
 	var queryParams QueryParams
 
@@ -43,10 +39,11 @@ func (s *Service) Search(c *gin.Context) {
 		resultTypes = strings.Split(string(queryParams.Types), "|")
 	}
 
-	var mu sync.Mutex
 	g, ctx := errgroup.WithContext(c.Request.Context())
 	ctx = context.WithValue(ctx, "originalURL", c.Request.RequestURI)
 	ctx = context.WithValue(ctx, "userID", userID)
+
+	results := make(map[cmn.MediaType]cmn.SearchResult)
 
 	for _, resultType := range resultTypes {
 		cl := s.Clients[cmn.MediaType(resultType)]
@@ -59,10 +56,7 @@ func (s *Service) Search(c *gin.Context) {
 				return nil
 			}
 
-			mu.Lock()
-			results = append(results, r)
-			test[cmn.MediaType(resultType)] = r
-			mu.Unlock()
+			results[cmn.MediaType(resultType)] = r
 
 			return nil
 		})
@@ -72,5 +66,5 @@ func (s *Service) Search(c *gin.Context) {
 		slog.Error(err.Error())
 	}
 
-	c.IndentedJSON(http.StatusOK, test)
+	c.IndentedJSON(http.StatusOK, results)
 }

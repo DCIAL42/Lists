@@ -140,24 +140,18 @@ func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 	result := DB.Where("media_id = ?", media.ID).Preload("Media").First(&existing)
 
 	if result.Error == nil {
-		if dst.ShouldUpdate() {
-			if err := DB.Model(&existing).Updates(dst).Error; err != nil {
-				return false, err
-			}
-
-			if err := DB.Model(&media).Updates(dst.GetMedia()).Error; err != nil {
-				return false, err
-			}
-
-			if err := DB.Preload("Media").First(dst, existing.GetID()).Error; err != nil {
-				return false, err
-			}
-			return true, nil
+		if err := DB.Model(&existing).Updates(dst).Error; err != nil {
+			return false, err
 		}
+
+		if err := DB.Model(&media).Updates(dst.GetMedia()).Error; err != nil {
+			return false, err
+		}
+
 		if err := DB.Preload("Media").First(dst, existing.GetID()).Error; err != nil {
 			return false, err
 		}
-		return false, nil
+		return true, nil
 	}
 
 	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
