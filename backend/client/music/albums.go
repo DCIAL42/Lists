@@ -3,6 +3,7 @@ package music
 import (
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
+	"gorm.io/gorm"
 )
 
 type AlbumData struct {
@@ -19,7 +20,7 @@ type Album struct {
 	Tracks   []Track `gorm:"foreignKey:AlbumID"`
 }
 
-func (a Album) toMediaResponse() (res cmn.MediaResponse) {
+func (a Album) ToMediaResponse() (res cmn.MediaResponse) {
 	tracks := make([]TrackResponse, 0, len(a.Tracks))
 	for _, track := range a.Tracks {
 		tracks = append(tracks, TrackResponse{
@@ -69,4 +70,14 @@ func (a *Album) GetID() uint {
 
 func (a *Album) ShouldUpdate() bool {
 	return db.DefaultShouldUpdate(a.Model.UpdatedAt)
+}
+
+func (a *Album) CacheItem(DB *gorm.DB) error {
+	if _, err := db.TrySaveItem(DB, &a.Artist); err != nil {
+		return err
+	}
+	if _, err := db.TrySaveItem(DB, a); err != nil {
+		return err
+	}
+	return nil
 }

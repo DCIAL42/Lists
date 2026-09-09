@@ -164,3 +164,44 @@ func TrySaveItem[T cmn.ExternalItem](DB *gorm.DB, dst T) (bool, error) {
 
 	return true, nil
 }
+
+type APIResponse[T cmn.ExternalItem] interface {
+	GetExternalID() string
+	ToExternalItem() T
+}
+
+func CacheItems[T cmn.ExternalItem, U APIResponse[T]](DB *gorm.DB, items []U) (res []cmn.MediaResponse, err error) {
+	externalIDs := make([]string, 0, len(items))
+	externalIDtoMovieResult := make(map[string]U, len(items))
+
+	for _, r := range items {
+		externalIDs = append(externalIDs, r.GetExternalID())
+		externalIDtoMovieResult[r.GetExternalID()] = r
+	}
+	var albums []T
+	err = DB.Where("media_id IN (?)", DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&albums).Error
+	if err != nil {
+		return
+	}
+
+	externalIDtoMovie := make(map[string]T, len(albums))
+	for _, a := range albums {
+		externalIDtoMovie[a.GetExternalID()] = a
+	}
+
+	results := make([]cmn.MediaResponse, 0, len(items))
+
+	for _, eID := range externalIDs {
+		album, ok := externalIDtoMovie[eID]
+		if !ok || album.ShouldUpdate() {
+			newAlbum := externalIDtoMovieResult[eID]
+			album = newAlbum.ToExternalItem()
+			if err = album.CacheItem(DB); err != nil {
+				return
+			}
+		}
+		results = append(results, album.ToMediaResponse())
+	}
+
+	return results, nil
+}

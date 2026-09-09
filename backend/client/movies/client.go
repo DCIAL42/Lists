@@ -29,6 +29,15 @@ func (r *MovieResponse) toMovie() Movie {
 	}
 }
 
+func (r MovieResponse) GetExternalID() string {
+	return strconv.Itoa(r.ExternalID)
+}
+
+func (r MovieResponse) ToExternalItem() *Movie {
+	m := r.toMovie()
+	return &m
+}
+
 func (m Movie) ToMediaResponse() (res cmn.MediaResponse) {
 	res = cmn.MediaResponse{
 		ID:    m.MediaID,
@@ -64,6 +73,13 @@ func (m *Movie) GetID() uint {
 	return m.ID
 }
 
+func (m *Movie) CacheItem(DB *gorm.DB) error {
+	if _, err := db.TrySaveItem(DB, m); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (m *Movie) ShouldUpdate() bool {
 	return db.DefaultShouldUpdate(m.Model.UpdatedAt)
 }
@@ -81,40 +97,9 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 	// sort.Slice(data.Results, func(i, j int) bool {
 	// 	return data.Results[i].Popularity > data.Results[j].Popularity
 	// })
-	externalIDs := make([]string, 0, len(data.Results))
-	externalIDtoMovieResult := make(map[string]MovieResponse, len(data.Results))
+	results, err := db.CacheItems(c.DB, data.Results)
 
-	for _, r := range data.Results {
-		externalIDs = append(externalIDs, strconv.Itoa(r.ExternalID))
-		externalIDtoMovieResult[strconv.Itoa(r.ExternalID)] = r
-	}
-
-	var movies []Movie
-	err = c.DB.Where("media_id IN (?)", c.DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&movies).Error
-	if err != nil {
-		return
-	}
-
-	externalIDtoMovie := make(map[string]Movie, len(movies))
-	for _, movie := range movies {
-		externalIDtoMovie[movie.Media.ExternalID] = movie
-	}
-
-	results := make([]cmn.MediaResponse, 0, len(data.Results))
-
-	for _, eID := range externalIDs {
-		movie, ok := externalIDtoMovie[eID]
-		if !ok || movie.ShouldUpdate() {
-			newMovie := externalIDtoMovieResult[eID]
-			movie = newMovie.toMovie()
-			if _, err = db.TrySaveItem(c.DB, &movie); err != nil {
-				return
-			}
-		}
-		results = append(results, movie.ToMediaResponse())
-	}
-
-	return cmn.SearchResult{Items: results}, nil
+	return cmn.SearchResult{Items: results}, err
 }
 
 func (c *Client) BuildURL(params map[string]string) string {

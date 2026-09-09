@@ -24,6 +24,15 @@ type AlbumSearchResponse struct {
 	} `json:"images"`
 }
 
+func (a AlbumSearchResponse) GetExternalID() string {
+	return a.ExternalID
+}
+
+func (a AlbumSearchResponse) ToExternalItem() *Album {
+	album := a.toAlbum()
+	return &album
+}
+
 type SearchResponse struct {
 	Albums struct {
 		Items []AlbumSearchResponse `json:"items"`

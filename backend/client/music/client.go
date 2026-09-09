@@ -50,40 +50,8 @@ func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn
 		slog.Error(err.Error())
 		return
 	}
-	externalIDs := make([]string, 0, len(data.Albums.Items))
-	externalIDtoMovieResult := make(map[string]AlbumSearchResponse, len(data.Albums.Items))
 
-	for _, r := range data.Albums.Items {
-		externalIDs = append(externalIDs, r.ExternalID)
-		externalIDtoMovieResult[r.ExternalID] = r
-	}
-	var albums []Album
-	err = c.DB.Where("media_id IN (?)", c.DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&albums).Error
-	if err != nil {
-		return
-	}
-
-	externalIDtoMovie := make(map[string]Album, len(albums))
-	for _, a := range albums {
-		externalIDtoMovie[a.Media.ExternalID] = a
-	}
-
-	results := make([]cmn.MediaResponse, 0, len(data.Albums.Items))
-
-	for _, eID := range externalIDs {
-		album, ok := externalIDtoMovie[eID]
-		if !ok || album.ShouldUpdate() {
-			newAlbum := externalIDtoMovieResult[eID]
-			album = newAlbum.toAlbum()
-			if _, err = db.TrySaveItem(c.DB, &album.Artist); err != nil {
-				return
-			}
-			if _, err = db.TrySaveItem(c.DB, &album); err != nil {
-				return
-			}
-		}
-		results = append(results, album.toMediaResponse())
-	}
+	results, err := db.CacheItems(c.DB, data.Albums.Items)
 
 	return cmn.SearchResult{Items: results}, nil
 }
@@ -212,7 +180,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 		}
 		item.Media = m
 		err = c.FetchArtist(item.Artist.Media.ExternalID)
-		return item.toMediaResponse(), nil
+		return item.ToMediaResponse(), nil
 	case cmn.TypeArtist:
 		var item Artist
 		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Albums.Media").First(&item)
@@ -221,7 +189,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 			return
 		}
 		item.Media = m
-		return item.toMediaResponse(), nil
+		return item.ToMediaResponse(), nil
 	}
 	return cmn.MediaResponse{}, &cmn.HttpError{Code: http.StatusInternalServerError, Message: "invalid type"}
 }

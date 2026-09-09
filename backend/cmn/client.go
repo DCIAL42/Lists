@@ -3,6 +3,8 @@ package cmn
 import (
 	"context"
 	"net/http"
+
+	"gorm.io/gorm"
 )
 
 type ExternalItem interface {
@@ -10,6 +12,8 @@ type ExternalItem interface {
 	GetID() uint
 	ShouldUpdate() bool
 	GetMedia() *Media
+	CacheItem(*gorm.DB) error
+	ToMediaResponse() MediaResponse
 }
 
 type Client interface {

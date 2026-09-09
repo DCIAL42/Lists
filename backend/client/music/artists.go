@@ -9,6 +9,7 @@ import (
 
 	"github.com/DCIAL42/lists/cmn"
 	"github.com/DCIAL42/lists/db"
+	"gorm.io/gorm"
 )
 
 type ArtistAPIResponse struct {
@@ -65,10 +66,10 @@ func (a Artist) ShouldUpdate() bool {
 func (a Artist) GetMedia() *cmn.Media {
 	return &a.Media
 }
-func (a Artist) toMediaResponse() cmn.MediaResponse {
+func (a Artist) ToMediaResponse() cmn.MediaResponse {
 	albums := make([]cmn.MediaResponse, 0)
 	for _, album := range a.Albums {
-		albums = append(albums, album.toMediaResponse())
+		albums = append(albums, album.ToMediaResponse())
 	}
 	res := cmn.MediaResponse{
 		ID:    a.Media.ID,
@@ -90,6 +91,10 @@ func (a Artist) toMediaResponse() cmn.MediaResponse {
 		res.Rating = (*a.Media.Rating).ToRatingResponse()
 	}
 	return res
+}
+func (a *Artist) CacheItem(DB *gorm.DB) error {
+	_, err := db.TrySaveItem(DB, a)
+	return err
 }
 
 func (c *Client) FetchArtist(externalID string) error {
