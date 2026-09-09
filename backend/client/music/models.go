@@ -7,7 +7,7 @@ import (
 )
 
 type Client struct {
-	*gorm.DB
+	db           *gorm.DB
 	httpClient   *http.Client
 	baseURL      string
 	searchPath   string

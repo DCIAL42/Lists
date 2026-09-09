@@ -79,12 +79,12 @@ func (t Track) ToMediaResponse() cmn.MediaResponse {
 
 func (c *Client) FetchTracks(albumMediaID uint) error {
 	var track Track
-	result := c.DB.Where("album_id = (?)", c.DB.Model(&Album{}).Select("id").Where("media_id = ?", albumMediaID)).First(&track)
+	result := c.db.Where("album_id = (?)", c.db.Model(&Album{}).Select("id").Where("media_id = ?", albumMediaID)).First(&track)
 	if result.Error == nil && time.Since(track.UpdatedAt) < 30*24*time.Hour {
 		return nil
 	}
 	var item Album
-	if err := c.DB.Where("media_id = ?", albumMediaID).Preload("Media").First(&item).Error; err != nil {
+	if err := c.db.Where("media_id = ?", albumMediaID).Preload("Media").First(&item).Error; err != nil {
 		return err
 	}
 
@@ -114,7 +114,7 @@ func (c *Client) FetchTracks(albumMediaID uint) error {
 				Name:       t.Name,
 			},
 		}
-		_, err := db.TrySaveItem(c.DB, &track)
+		_, err := db.TrySaveItem(c.db, &track)
 		if err != nil {
 			return err
 		}

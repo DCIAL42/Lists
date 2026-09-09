@@ -2,7 +2,6 @@ package movies
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"maps"
@@ -36,6 +35,10 @@ func (r MovieResponse) GetExternalID() string {
 func (r MovieResponse) ToExternalItem() *Movie {
 	m := r.toMovie()
 	return &m
+}
+
+func (r *Response) Items() []MovieResponse {
+	return r.Results
 }
 
 func (m Movie) ToMediaResponse() (res cmn.MediaResponse) {
@@ -84,24 +87,6 @@ func (m *Movie) ShouldUpdate() bool {
 	return db.DefaultShouldUpdate(m.Model.UpdatedAt)
 }
 
-func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	var data Response
-
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	// sort.Slice(data.Results, func(i, j int) bool {
-	// 	return data.Results[i].Popularity > data.Results[j].Popularity
-	// })
-	results, err := db.CacheItems(c.DB, data.Results)
-
-	return cmn.SearchResult{Items: results}, err
-}
-
 func (c *Client) BuildURL(params map[string]string) string {
 	query := url.Values{}
 
@@ -111,6 +96,10 @@ func (c *Client) BuildURL(params map[string]string) string {
 
 	url := c.baseURL + c.searchPath + "?" + query.Encode()
 	return url
+}
+
+func (c *Client) DB() *gorm.DB {
+	return c.db
 }
 
 func NewClient(httpClient *http.Client, DB *gorm.DB) *Client {
@@ -164,12 +153,12 @@ func (c *Client) TryRequest(ctx context.Context, url string) (*http.Response, er
 func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.SearchResult, error) {
 	maps.Copy(params, c.configParams)
 
-	return client.Search(ctx, c, params)
+	return client.Search[*Movie, MovieResponse, *Response](ctx, c, params)
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 	var item Movie
-	result := c.DB.Where("media_id = ?", m.ID).Preload("Media").First(&item)
+	result := c.db.Where("media_id = ?", m.ID).Preload("Media").First(&item)
 	if result.Error != nil {
 		err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 		return

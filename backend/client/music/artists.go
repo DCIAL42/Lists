@@ -102,7 +102,7 @@ func (c *Client) FetchArtist(externalID string) error {
 		return &cmn.HttpError{Code: http.StatusInternalServerError, Message: "invalid artist external id"}
 	}
 	var artist Artist
-	result := c.DB.Where("media_id = (?)", c.DB.Model(&cmn.Media{}).Select("id").Where("external_id = ?", externalID)).First(&artist)
+	result := c.db.Where("media_id = (?)", c.db.Model(&cmn.Media{}).Select("id").Where("external_id = ?", externalID)).First(&artist)
 	if result.Error == nil && time.Since(artist.UpdatedAt) < time.Second {
 		return nil
 	}
@@ -155,6 +155,6 @@ func (c *Client) FetchArtist(externalID string) error {
 		}
 	}
 
-	_, err = db.TrySaveItem(c.DB, &artist)
+	_, err = db.TrySaveItem(c.db, &artist)
 	return err
 }

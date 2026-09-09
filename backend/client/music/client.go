@@ -14,7 +14,6 @@ import (
 
 	"github.com/DCIAL42/lists/client"
 	"github.com/DCIAL42/lists/cmn"
-	"github.com/DCIAL42/lists/db"
 	"gorm.io/gorm"
 )
 
@@ -41,19 +40,12 @@ func (r *AlbumSearchResponse) toAlbum() Album {
 	return res
 }
 
-func (c *Client) ReadToSearchResult(resp *http.Response, userID string) (res cmn.SearchResult, err error) {
-	var data SearchResponse
+func (s *SearchResponse) Items() []AlbumSearchResponse {
+	return s.Albums.Items
+}
 
-	err = json.NewDecoder(resp.Body).Decode(&data)
-
-	if err != nil {
-		slog.Error(err.Error())
-		return
-	}
-
-	results, err := db.CacheItems(c.DB, data.Albums.Items)
-
-	return cmn.SearchResult{Items: results}, nil
+func (c *Client) DB() *gorm.DB {
+	return c.db
 }
 
 func (c *Client) BuildURL(params map[string]string) string {
@@ -165,7 +157,7 @@ func (c *Client) TryRequest(ctx context.Context, targetUrl string) (*http.Respon
 func (c *Client) Search(ctx context.Context, params map[string]string) (cmn.SearchResult, error) {
 	maps.Copy(params, c.configParams)
 
-	return client.Search(ctx, c, params)
+	return client.Search[*Album, AlbumSearchResponse, *SearchResponse](ctx, c, params)
 }
 
 func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
@@ -173,7 +165,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 	case cmn.TypeAlbum:
 		c.FetchTracks(m.ID)
 		var item Album
-		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Tracks.Media").Preload("Artist.Media").First(&item)
+		result := c.db.Where("media_id = ?", m.ID).Preload("Media").Preload("Tracks.Media").Preload("Artist.Media").First(&item)
 		if result.Error != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 			return
@@ -183,7 +175,7 @@ func (c *Client) ResolveMedia(m cmn.Media) (res cmn.MediaResponse, err error) {
 		return item.ToMediaResponse(), nil
 	case cmn.TypeArtist:
 		var item Artist
-		result := c.DB.Where("media_id = ?", m.ID).Preload("Media").Preload("Albums.Media").First(&item)
+		result := c.db.Where("media_id = ?", m.ID).Preload("Media").Preload("Albums.Media").First(&item)
 		if result.Error != nil {
 			err = &cmn.HttpError{Code: http.StatusInternalServerError, Message: "failed to get media"}
 			return

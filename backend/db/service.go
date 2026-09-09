@@ -170,37 +170,51 @@ type APIResponse[T cmn.ExternalItem] interface {
 	ToExternalItem() T
 }
 
-func CacheItems[T cmn.ExternalItem, U APIResponse[T]](DB *gorm.DB, items []U) (res []cmn.MediaResponse, err error) {
-	externalIDs := make([]string, 0, len(items))
-	externalIDtoMovieResult := make(map[string]U, len(items))
+func CacheItems[T cmn.ExternalItem, U APIResponse[T]](DB *gorm.DB, searchItems []U) (res []T, err error) {
+	externalIDs := make([]string, 0, len(searchItems))
+	externalIDToResult := make(map[string]U, len(searchItems))
 
-	for _, r := range items {
+	for _, r := range searchItems {
 		externalIDs = append(externalIDs, r.GetExternalID())
-		externalIDtoMovieResult[r.GetExternalID()] = r
+		externalIDToResult[r.GetExternalID()] = r
 	}
-	var albums []T
-	err = DB.Where("media_id IN (?)", DB.Model(&cmn.Media{}).Select("id").Where("external_id IN ?", externalIDs)).Preload("Media.Tracking").Preload("Media.Rating").Find(&albums).Error
-	if err != nil {
+	var items []T
+	if err = DB.
+		Where("media_id IN (?)",
+			DB.Model(&cmn.Media{}).
+				Select("id").
+				Where("external_id IN ?", externalIDs),
+		).
+		Preload("Media.Tracking").
+		Preload("Media.Rating").
+		Find(&items).
+		Error; err != nil {
 		return
 	}
 
-	externalIDtoMovie := make(map[string]T, len(albums))
-	for _, a := range albums {
-		externalIDtoMovie[a.GetExternalID()] = a
+	externalIDToItem := make(map[string]T, len(items))
+	for _, a := range items {
+		externalIDToItem[a.GetExternalID()] = a
 	}
 
-	results := make([]cmn.MediaResponse, 0, len(items))
+	results := make([]T, 0, len(searchItems))
 
 	for _, eID := range externalIDs {
-		album, ok := externalIDtoMovie[eID]
-		if !ok || album.ShouldUpdate() {
-			newAlbum := externalIDtoMovieResult[eID]
-			album = newAlbum.ToExternalItem()
-			if err = album.CacheItem(DB); err != nil {
+		item, ok := externalIDToItem[eID]
+		if !ok || item.ShouldUpdate() {
+			tracking := item.GetMedia().Tracking
+			rating := item.GetMedia().Rating
+			newData := externalIDToResult[eID]
+			item = newData.ToExternalItem()
+			if err = item.CacheItem(DB); err != nil {
 				return
 			}
+			if ok {
+				item.GetMedia().Tracking = tracking
+				item.GetMedia().Rating = rating
+			}
 		}
-		results = append(results, album.ToMediaResponse())
+		results = append(results, item)
 	}
 
 	return results, nil
