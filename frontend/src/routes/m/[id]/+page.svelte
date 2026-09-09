@@ -9,7 +9,6 @@
     $effect(() => {
         media = data.media;
     });
-    $inspect(media);
 </script>
 
 <main class="grid">
