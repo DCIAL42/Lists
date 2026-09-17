@@ -9,9 +9,9 @@ of various different media (currently albums and movies).
 
 I have previously used a few different apps for rating and tracking media, some
 of the main ones are:
-- [Letterboxd](letterboxd.com)
-- [Rate Your Music](rateyourmusic.com)
-- [JustWatch](justwatch.com)
+- [Letterboxd](https://letterboxd.com)
+- [Rate Your Music](https://rateyourmusic.com)
+- [JustWatch](https://justwatch.com)
 
 I would also use the notes app on my phone, but that wasn't ideal, so I decided
 to make this website to fulfill all my requirements.
